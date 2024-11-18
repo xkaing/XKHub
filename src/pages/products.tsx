@@ -4,7 +4,7 @@ import styles from './products.less';
 export default function Page() {
   return (
     <div>
-      <h1 className={styles.title}>Page products</h1>
+      <h1 className={styles.title}>Page products111</h1>
     </div>
   );
 }
