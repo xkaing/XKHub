@@ -72,18 +72,43 @@
   border-color: #8b5cf6;
 }
 
-.login-button {
-  height: 48px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  border: none;
-  font-size: 16px;
-  font-weight: 500;
-  margin-top: 8px;
+.login-button,
+.login-button.ant-btn-primary {
+  height: 48px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  border: none !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  margin-top: 8px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2) !important;
+  color: #fff !important;
 }
 
-.login-button:hover {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+.login-button:hover,
+.login-button.ant-btn-primary:hover,
+.login-button.ant-btn-primary:focus {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+  transform: translateY(-1px) !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.login-button:active,
+.login-button.ant-btn-primary:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2) !important;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  color: #fff !important;
+}
+
+.login-button:focus,
+.login-button.ant-btn-primary:focus {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2) !important;
+  color: #fff !important;
 }
 
 .login-footer {
@@ -173,5 +198,21 @@
 
 [data-theme="dark"] .auth-tabs .ant-tabs-tab-active {
   color: #8b5cf6;
+}
+
+[data-theme="dark"] .login-button,
+[data-theme="dark"] .login-button.ant-btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3) !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .login-button:hover,
+[data-theme="dark"] .login-button.ant-btn-primary:hover,
+[data-theme="dark"] .login-button.ant-btn-primary:focus {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5) !important;
+  color: #fff !important;
+  border: none !important;
 }
 
