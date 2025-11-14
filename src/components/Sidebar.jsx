@@ -1,5 +1,5 @@
-import { Card, Menu, Avatar } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { Card, Menu, Avatar, Button, message, Dropdown } from "antd";
+import { UserOutlined, SettingOutlined, CloseOutlined } from "@ant-design/icons";
 import { menuItems } from "../constants/menuItems";
 import { themeMenuItems } from "../constants/themeMenuItems";
 
@@ -16,6 +16,7 @@ const Sidebar = ({
   currentTheme,
   userInfoCollapsed,
   onToggleUserInfo,
+  onLogout,
 }) => {
   // 获取用户显示名称
   const getUserDisplayName = () => {
@@ -34,6 +35,33 @@ const Sidebar = ({
       return profile.avatar_url;
     }
     return null;
+  };
+
+  // 处理退出登录
+  const handleLogout = async () => {
+    try {
+      await onLogout();
+      message.success("已退出登录");
+    } catch (error) {
+      message.error("退出登录失败，请稍后重试");
+    }
+  };
+
+  // 用户下拉菜单项
+  const userMenuItems = [
+    {
+      key: "logout",
+      label: "退出登录",
+      icon: <CloseOutlined />,
+      danger: true,
+    },
+  ];
+
+  // 处理下拉菜单点击
+  const handleUserMenuClick = ({ key }) => {
+    if (key === "logout") {
+      handleLogout();
+    }
   };
 
   return (
@@ -55,48 +83,80 @@ const Sidebar = ({
     >
       <div
         className="user-profile-section"
-        onClick={onToggleUserInfo}
         style={{
           padding: "20px",
           display: "flex",
           alignItems: "center",
           justifyContent: collapsed || userInfoCollapsed ? "center" : "flex-start",
           gap: "12px",
-          cursor: "pointer",
           transition: "all 0.2s",
         }}
       >
-        <Avatar
-          size={collapsed || userInfoCollapsed ? 40 : 40}
-          src={getUserAvatar()}
-          icon={<UserOutlined />}
-          style={{ flexShrink: 0 }}
-        />
-        {!collapsed && !userInfoCollapsed && (
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "15px",
-                color: currentTheme === "dark" ? "#fff" : "#333",
-                lineHeight: "20px",
-              }}
-            >
-              {getUserDisplayName()}
-            </div>
-            {user?.email && (
+        <div
+          onClick={onToggleUserInfo}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            flex: 1,
+            minWidth: 0,
+            cursor: "pointer",
+          }}
+        >
+          <Avatar
+            size={collapsed || userInfoCollapsed ? 40 : 40}
+            src={getUserAvatar()}
+            icon={<UserOutlined />}
+            style={{ flexShrink: 0 }}
+          />
+          {!collapsed && !userInfoCollapsed && (
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: "13px",
-                  color: currentTheme === "dark" ? "#999" : "#666",
-                  lineHeight: "18px",
-                  marginTop: "2px",
+                  fontWeight: 600,
+                  fontSize: "15px",
+                  color: currentTheme === "dark" ? "#fff" : "#333",
+                  lineHeight: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
-                {user.email}
+                {getUserDisplayName()}
               </div>
-            )}
-          </div>
+              {user?.email && (
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: currentTheme === "dark" ? "#999" : "#666",
+                    lineHeight: "18px",
+                    marginTop: "2px",
+                  }}
+                >
+                  {user.email}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {!collapsed && !userInfoCollapsed && (
+          <Dropdown
+            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
+            <Button
+              type="text"
+              icon={<SettingOutlined />}
+              style={{
+                color: currentTheme === "dark" ? "#999" : "#666",
+                padding: "4px 8px",
+                minWidth: "auto",
+                height: "auto",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Dropdown>
         )}
       </div>
       <Menu
@@ -129,7 +189,6 @@ const Sidebar = ({
               display: "flex",
               flexDirection: "column",
               gap: "4px",
-              marginBottom: "8px",
             }}
           >
             {themeMenuItems.map((item) => (

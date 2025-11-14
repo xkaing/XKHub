@@ -9,7 +9,7 @@ import Sidebar from "./components/Sidebar";
 import "./App.css";
 
 function App() {
-  const { user, profile, loading, handleLoginSuccess } = useAuth();
+  const { user, profile, loading, handleLoginSuccess, handleLogout } = useAuth();
   const { themeMode, setThemeMode, getCurrentTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [userInfoCollapsed, setUserInfoCollapsed] = useState(false);
@@ -80,6 +80,7 @@ function App() {
           currentTheme={currentTheme}
           userInfoCollapsed={userInfoCollapsed}
           onToggleUserInfo={() => setUserInfoCollapsed(!userInfoCollapsed)}
+          onLogout={handleLogout}
         />
         <Card
           className="content-card"

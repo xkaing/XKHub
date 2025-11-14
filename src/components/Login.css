@@ -103,6 +103,24 @@
   text-decoration: underline;
 }
 
+.auth-tabs {
+  margin-bottom: 24px;
+}
+
+.auth-tabs .ant-tabs-tab {
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 24px;
+}
+
+.auth-tabs .ant-tabs-tab-active {
+  color: #8b5cf6;
+}
+
+.auth-tabs .ant-tabs-ink-bar {
+  background: #8b5cf6;
+}
+
 .login-right {
   flex: 1;
   background: linear-gradient(180deg, #a8d5e2 0%, #b8a8e8 50%, #f5c2d1 100%);
@@ -147,5 +165,13 @@
 
 [data-theme="dark"] .login-footer {
   color: #aaa;
+}
+
+[data-theme="dark"] .auth-tabs .ant-tabs-tab {
+  color: #ccc;
+}
+
+[data-theme="dark"] .auth-tabs .ant-tabs-tab-active {
+  color: #8b5cf6;
 }
 

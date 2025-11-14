@@ -79,10 +79,27 @@ export const useAuth = () => {
     await fetchUserProfile(userData);
   };
 
+  // 退出登录
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("退出登录失败:", error);
+        throw error;
+      }
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error("退出登录异常:", error);
+      throw error;
+    }
+  };
+
   return {
     user,
     profile,
     loading,
     handleLoginSuccess,
+    handleLogout,
   };
 };
