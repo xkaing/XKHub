@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ConfigProvider, Menu, Typography, Card, Dropdown, Button, Avatar, Tabs, Table } from "antd";
+import { ConfigProvider, Menu, Typography, Card, Avatar, Tabs, Table } from "antd";
 import { theme } from "antd";
 import {
   MenuFoldOutlined,
@@ -8,6 +8,17 @@ import {
   SunOutlined,
   MoonOutlined,
   UserOutlined,
+  TrophyOutlined,
+  BankOutlined,
+  TagOutlined,
+  ThunderboltOutlined,
+  BookOutlined,
+  PlayCircleOutlined,
+  TeamOutlined,
+  FileTextOutlined,
+  AppleOutlined,
+  CloudServerOutlined,
+  FolderOpenOutlined,
 } from "@ant-design/icons";
 import { supabase } from "./lib/supabase";
 import Login from "./components/Login";
@@ -51,6 +62,131 @@ const W40KContent = () => {
     <div>
       <Title level={2}>W40K</Title>
       <p>这是 W40K 页面的内容区域</p>
+    </div>
+  );
+};
+
+// 动态管理页面内容
+const MomentsContent = () => {
+  const [moments, setMoments] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 获取动态列表
+  const fetchMoments = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("moments").select("*").order("publish_time", { ascending: false });
+
+      if (error) {
+        console.error("获取动态列表失败:", error);
+        return;
+      }
+
+      setMoments(data || []);
+    } catch (error) {
+      console.error("获取动态列表异常:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMoments();
+  }, []);
+
+  // 表格列定义
+  const momentsColumns = [
+    {
+      title: "ID",
+      dataIndex: "id",
+      key: "id",
+      width: 80,
+    },
+    {
+      title: "用户名",
+      dataIndex: "user_name",
+      key: "user_name",
+      width: 120,
+      render: (userName) => userName || "-",
+    },
+    {
+      title: "用户头像",
+      dataIndex: "user_avatar_url",
+      key: "user_avatar_url",
+      width: 100,
+      render: (avatarUrl) => <Avatar src={avatarUrl} icon={<UserOutlined />} size={40} />,
+    },
+    {
+      title: "发布时间",
+      dataIndex: "publish_time",
+      key: "publish_time",
+      width: 180,
+      render: (publishTime) => {
+        if (!publishTime) return "-";
+        return new Date(publishTime).toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      },
+    },
+    {
+      title: "内容",
+      dataIndex: "content_text",
+      key: "content_text",
+      width: 300,
+      render: (contentText) => (
+        <div
+          style={{
+            maxWidth: "300px",
+            wordWrap: "break-word",
+            wordBreak: "break-word",
+            whiteSpace: "normal",
+          }}
+        >
+          {contentText || "-"}
+        </div>
+      ),
+    },
+    {
+      title: "内容图片",
+      dataIndex: "content_img_url",
+      key: "content_img_url",
+      width: 200,
+      render: (imgUrl) => {
+        if (!imgUrl) return "-";
+        return (
+          <img
+            src={imgUrl}
+            alt="内容图片"
+            style={{ width: 100, height: 100, objectFit: "cover", borderRadius: "4px" }}
+            onError={(e) => {
+              e.target.style.display = "none";
+            }}
+          />
+        );
+      },
+    },
+  ];
+
+  return (
+    <div>
+      <Title level={2}>社区动态</Title>
+      <Table
+        columns={momentsColumns}
+        dataSource={moments}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 条记录`,
+        }}
+        scroll={{ x: 1200 }}
+      />
     </div>
   );
 };
@@ -324,42 +460,56 @@ function App() {
     {
       key: "psn",
       label: "PSN",
+      icon: <FolderOpenOutlined />,
       children: [
         {
           key: "psn-trophies",
           label: "PSN TROPHIES",
+          icon: <TrophyOutlined />,
         },
         {
           key: "psn-companies",
           label: "GAME COMPANY",
+          icon: <BankOutlined />,
         },
         {
           key: "psn-ips",
           label: "GAME IP",
+          icon: <TagOutlined />,
         },
       ],
     },
     {
       key: "warhammer",
       label: "Warhammer",
+      icon: <FolderOpenOutlined />,
       children: [
         {
           key: "warhammer-40k",
           label: "40K",
+          icon: <FileTextOutlined />,
         },
         {
           key: "warhammer-the-horus-heresy",
           label: "THE HORUS HERESY",
+          icon: <FileTextOutlined />,
         },
       ],
     },
     {
       key: "xkailive",
       label: "XKALLive",
+      icon: <AppleOutlined />,
       children: [
         {
-          key: "xkailive-account-management",
-          label: "Account Management",
+          key: "xkailive-account",
+          label: "Accounts",
+          icon: <TeamOutlined />,
+        },
+        {
+          key: "xkailive-moments",
+          label: "Moments",
+          icon: <CloudServerOutlined />,
         },
       ],
     },
@@ -408,8 +558,10 @@ function App() {
         return <GameIPsContent />;
       case "warhammer-40k":
         return <W40KContent />;
-      case "xkailive-account-management":
+      case "xkailive-account":
         return <XKALLiveContent />;
+      case "xkailive-moments":
+        return <MomentsContent />;
       default:
         return <DefaultContent />;
     }
@@ -464,50 +616,71 @@ function App() {
       <div
         style={{
           minHeight: "100vh",
-          background: currentTheme === "dark" ? "#141414" : "#f0f2f5",
-          padding: "16px",
+          background: currentTheme === "dark" ? "#141414" : "#f5f5f5",
+          padding: "20px",
           display: "flex",
-          gap: "16px",
+          gap: "20px",
           transition: "background-color 0.3s",
         }}
       >
         <Card
+          className="sidebar-card"
           style={{
-            width: collapsed ? 80 : 200,
-            height: "calc(100vh - 32px)",
+            width: collapsed ? 80 : 240,
+            height: "calc(100vh - 40px)",
             padding: 0,
             transition: "width 0.2s",
+            borderRadius: "12px",
+            background: "transparent",
+            boxShadow: "none",
+            border: "none",
           }}
           styles={{ body: { padding: 0, height: "100%", display: "flex", flexDirection: "column" } }}
         >
           <div
-            className="logo"
+            className="user-profile-section"
             onClick={toggleUserInfo}
             style={{
-              height: 64,
-              padding: "16px",
+              padding: "20px",
               display: "flex",
               alignItems: "center",
               justifyContent: collapsed || userInfoCollapsed ? "center" : "flex-start",
               gap: "12px",
-              color: "#1890ff",
-              fontWeight: "bold",
-              fontSize: collapsed || userInfoCollapsed ? 16 : 14,
-              borderBottom: "1px solid #f0f0f0",
               cursor: "pointer",
               transition: "all 0.2s",
             }}
           >
             <Avatar
-              size={collapsed || userInfoCollapsed ? 32 : 28}
+              size={collapsed || userInfoCollapsed ? 40 : 40}
               src={getUserAvatar()}
               icon={<UserOutlined />}
               style={{ flexShrink: 0 }}
             />
             {!collapsed && !userInfoCollapsed && (
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {getUserDisplayName()}
-              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "15px",
+                    color: currentTheme === "dark" ? "#fff" : "#333",
+                    lineHeight: "20px",
+                  }}
+                >
+                  {getUserDisplayName()}
+                </div>
+                {user?.email && (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: currentTheme === "dark" ? "#999" : "#666",
+                      lineHeight: "18px",
+                      marginTop: "2px",
+                    }}
+                  >
+                    {user.email}
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <Menu
@@ -517,61 +690,97 @@ function App() {
             onOpenChange={setOpenKeys}
             items={menuItems}
             onClick={({ key }) => setSelectedKey(key)}
+            className="custom-sidebar-menu"
             style={{
               flex: 1,
               borderRight: "none",
+              background: "transparent",
+              padding: "8px",
             }}
           />
           <div
             style={{
               padding: "16px",
-              borderTop: "1px solid #f0f0f0",
+              borderTop: currentTheme === "dark" ? "1px solid #2a2a2a" : "1px solid #f0f0f0",
               display: "flex",
               flexDirection: "column",
               gap: "8px",
-              alignItems: "center",
             }}
           >
-            <Dropdown
-              menu={{
-                items: themeMenuItems,
-                selectedKeys: [themeMode],
-                onClick: ({ key }) => setThemeMode(key),
-              }}
-              placement="top"
-            >
-              <Button
-                type="text"
-                icon={getThemeIcon()}
+            {!collapsed && (
+              <div
                 style={{
-                  width: collapsed ? "auto" : "100%",
-                  fontSize: collapsed ? 18 : undefined,
-                  color: "#1890ff",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                  marginBottom: "8px",
                 }}
               >
-                {!collapsed && "主题"}
-              </Button>
-            </Dropdown>
-            {collapsed ? (
+                {themeMenuItems.map((item) => (
+                  <div
+                    key={item.key}
+                    onClick={() => setThemeMode(item.key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      background:
+                        themeMode === item.key ? (currentTheme === "dark" ? "#2a2a2a" : "#f5f5f5") : "transparent",
+                      color:
+                        themeMode === item.key
+                          ? currentTheme === "dark"
+                            ? "#1890ff"
+                            : "#1890ff"
+                          : currentTheme === "dark"
+                          ? "#fff"
+                          : "#666",
+                      fontWeight: themeMode === item.key ? 500 : 400,
+                    }}
+                  >
+                    <span style={{ fontSize: "16px" }}>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* {collapsed ? (
               <MenuUnfoldOutlined
                 className="trigger"
                 onClick={() => setCollapsed(false)}
-                style={{ fontSize: 18, cursor: "pointer", color: "#1890ff" }}
+                style={{
+                  fontSize: 18,
+                  cursor: "pointer",
+                  color: currentTheme === "dark" ? "#fff" : "#666",
+                  alignSelf: "center",
+                }}
               />
             ) : (
               <MenuFoldOutlined
                 className="trigger"
                 onClick={() => setCollapsed(true)}
-                style={{ fontSize: 18, cursor: "pointer", color: "#1890ff" }}
+                style={{
+                  fontSize: 18,
+                  cursor: "pointer",
+                  color: currentTheme === "dark" ? "#fff" : "#666",
+                  alignSelf: "center",
+                }}
               />
-            )}
+            )} */}
           </div>
         </Card>
         <Card
+          className="content-card"
           style={{
             flex: 1,
-            height: "calc(100vh - 32px)",
+            height: "calc(100vh - 40px)",
             overflow: "auto",
+            borderRadius: "12px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+            padding: "24px",
           }}
         >
           {renderContent()}

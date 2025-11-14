@@ -7,3 +7,116 @@
 .trigger:hover {
   color: #40a9ff;
 }
+
+/* 侧边栏卡片 - 透明背景，与页面背景一致 */
+.sidebar-card {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .sidebar-card {
+  background: transparent !important;
+}
+
+/* 用户信息区域 */
+.user-profile-section {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+[data-theme="dark"] .user-profile-section {
+  border-bottom-color: #2a2a2a;
+}
+
+/* 自定义菜单样式 */
+.custom-sidebar-menu .ant-menu-item {
+  margin: 4px 8px !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  padding: 0 12px !important;
+  transition: all 0.2s !important;
+  background: transparent !important;
+}
+
+.custom-sidebar-menu .ant-menu-item:hover {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-item:hover {
+  background: transparent !important;
+}
+
+/* 取消选中项的卡片样式，只保留字体加粗 */
+.custom-sidebar-menu .ant-menu-item-selected {
+  background: transparent !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-item-selected {
+  background: transparent !important;
+}
+
+/* 父菜单标题样式 */
+.custom-sidebar-menu .ant-menu-submenu-title {
+  margin: 4px 8px !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  padding: 0 12px !important;
+  transition: all 0.2s !important;
+  background: transparent !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-title:hover {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-submenu-title:hover {
+  background: transparent !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu-open > .ant-menu-submenu-title {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-submenu-open > .ant-menu-submenu-title {
+  background: transparent !important;
+}
+
+/* 当子菜单被选中时，父级菜单不显示选中状态 */
+.custom-sidebar-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  background: transparent !important;
+  color: inherit !important;
+  font-weight: normal !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  background: transparent !important;
+  color: inherit !important;
+  font-weight: normal !important;
+}
+
+/* 子菜单样式 - 增加左边距，显示层级 */
+.custom-sidebar-menu .ant-menu-submenu .ant-menu {
+  background: transparent !important;
+}
+
+.custom-sidebar-menu .ant-menu-submenu .ant-menu-item {
+  margin: 4px 8px 4px 24px !important;
+  padding-left: 12px !important;
+}
+
+[data-theme="dark"] .custom-sidebar-menu .ant-menu-submenu .ant-menu {
+  background: transparent !important;
+}
+
+/* 内容区域卡片 */
+.content-card {
+  background: white !important;
+  border: 1px solid #f0f0f0 !important;
+}
+
+[data-theme="dark"] .content-card {
+  background: #1f1f1f !important;
+  border-color: #2a2a2a !important;
+}
