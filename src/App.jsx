@@ -46,6 +46,26 @@ const W40KContent = () => {
   );
 };
 
+// XKALLive 页面内容
+const XKALLiveContent = () => {
+  return (
+    <div>
+      <Title level={2}>XKALLive</Title>
+      <p>这是 XKALLive 页面的内容区域</p>
+    </div>
+  );
+};
+
+// 默认页面
+const DefaultContent = () => {
+  return (
+    <div>
+      <Title level={2}>Default</Title>
+      <p>这是默认页面的内容区域</p>
+    </div>
+  );
+};
+
 function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedKey, setSelectedKey] = useState("psn-trophies");
@@ -97,21 +117,41 @@ function App() {
       children: [
         {
           key: "psn-trophies",
-          label: "PSN奖杯",
+          label: "PSN TROPHIES",
         },
         {
           key: "psn-companies",
-          label: "游戏公司",
+          label: "GAME COMPANY",
         },
         {
           key: "psn-ips",
-          label: "游戏IP",
+          label: "GAME IP",
         },
       ],
     },
     {
-      key: "w40k",
-      label: "W40K",
+      key: "warhammer",
+      label: "Warhammer",
+      children: [
+        {
+          key: "warhammer-40k",
+          label: "40K",
+        },
+        {
+          key: "warhammer-the-horus-heresy",
+          label: "THE HORUS HERESY",
+        },
+      ],
+    },
+    {
+      key: "xkailive",
+      label: "XKALLive",
+      children: [
+        {
+          key: "xkailive-account-management",
+          label: "Account Management",
+        },
+      ],
     },
   ];
 
@@ -156,10 +196,12 @@ function App() {
         return <GameCompaniesContent />;
       case "psn-ips":
         return <GameIPsContent />;
-      case "w40k":
+      case "warhammer-40k":
         return <W40KContent />;
+      case "xkailive-account-management":
+        return <XKALLiveContent />;
       default:
-        return <PSNTrophiesContent />;
+        return <DefaultContent />;
     }
   };
 
