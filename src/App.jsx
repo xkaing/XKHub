@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react";
-import { ConfigProvider, Menu, Typography, Card, Dropdown, Button } from "antd";
+import { ConfigProvider, Menu, Typography, Card, Dropdown, Button, Avatar } from "antd";
 import { theme } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, BulbOutlined, SunOutlined, MoonOutlined } from "@ant-design/icons";
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  BulbOutlined,
+  SunOutlined,
+  MoonOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import { supabase } from "./lib/supabase";
+import Login from "./components/Login";
 import "./App.css";
 
 const { Title } = Typography;
@@ -67,13 +76,92 @@ const DefaultContent = () => {
 };
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
+  const [userInfoCollapsed, setUserInfoCollapsed] = useState(false);
   const [selectedKey, setSelectedKey] = useState("psn-trophies");
   const [openKeys, setOpenKeys] = useState(["psn"]);
   const [themeMode, setThemeMode] = useState(() => {
     // 从 localStorage 读取保存的主题设置
     return localStorage.getItem("themeMode") || "light";
   });
+
+  // 检查用户登录状态
+  useEffect(() => {
+    checkUser();
+
+    // 监听认证状态变化
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchUserProfile(session.user);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // 检查当前用户
+  const checkUser = async () => {
+    try {
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+      if (currentUser) {
+        setUser(currentUser);
+        await fetchUserProfile(currentUser);
+      }
+    } catch (error) {
+      console.error("检查用户状态失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 获取用户资料
+  const fetchUserProfile = async (userData) => {
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", userData.id).single();
+      console.log("获取用户信息：", data);
+
+      if (error) {
+        console.error("获取用户资料失败:", error);
+        // 如果 profiles 表不存在或没有数据，使用默认值
+        setProfile({
+          avatar_url: null,
+          username: userData?.email?.split("@")[0] || "用户",
+        });
+      } else {
+        setProfile(
+          data || {
+            avatar_url: null,
+            username: userData?.email?.split("@")[0] || "用户",
+          }
+        );
+      }
+    } catch (error) {
+      console.error("获取用户资料异常:", error);
+      setProfile({
+        avatar_url: null,
+        username: userData?.email?.split("@")[0] || "用户",
+      });
+    }
+  };
+
+  // 处理登录成功
+  const handleLoginSuccess = async (userData) => {
+    setUser(userData);
+    await fetchUserProfile(userData);
+  };
 
   // 监听系统主题变化
   useEffect(() => {
@@ -205,6 +293,50 @@ function App() {
     }
   };
 
+  // 如果正在加载，显示加载状态
+  if (loading) {
+    return (
+      <ConfigProvider theme={antdTheme}>
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div>加载中...</div>
+        </div>
+      </ConfigProvider>
+    );
+  }
+
+  // 如果未登录，显示登录页面
+  if (!user) {
+    return (
+      <ConfigProvider theme={antdTheme}>
+        <Login onLoginSuccess={handleLoginSuccess} />
+      </ConfigProvider>
+    );
+  }
+
+  // 获取用户显示名称
+  const getUserDisplayName = () => {
+    if (profile?.nickname) {
+      return profile.nickname;
+    }
+    if (user?.email) {
+      return user.email.split("@")[0];
+    }
+    return "用户";
+  };
+
+  // 获取用户头像
+  const getUserAvatar = () => {
+    if (profile?.avatar_url) {
+      return profile.avatar_url;
+    }
+    return null;
+  };
+
+  // 切换用户信息显示（点击用户信息区域时）
+  const toggleUserInfo = () => {
+    setUserInfoCollapsed(!userInfoCollapsed);
+  };
+
   return (
     <ConfigProvider theme={antdTheme}>
       <div
@@ -228,19 +360,33 @@ function App() {
         >
           <div
             className="logo"
+            onClick={toggleUserInfo}
             style={{
               height: 64,
               padding: "16px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent: collapsed || userInfoCollapsed ? "center" : "flex-start",
+              gap: "12px",
               color: "#1890ff",
               fontWeight: "bold",
-              fontSize: collapsed ? 16 : 20,
+              fontSize: collapsed || userInfoCollapsed ? 16 : 14,
               borderBottom: "1px solid #f0f0f0",
+              cursor: "pointer",
+              transition: "all 0.2s",
             }}
           >
-            {collapsed ? "XK" : "XKHub"}
+            <Avatar
+              size={collapsed || userInfoCollapsed ? 32 : 28}
+              src={getUserAvatar()}
+              icon={<UserOutlined />}
+              style={{ flexShrink: 0 }}
+            />
+            {!collapsed && !userInfoCollapsed && (
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {getUserDisplayName()}
+              </span>
+            )}
           </div>
           <Menu
             mode="inline"
@@ -287,13 +433,13 @@ function App() {
             {collapsed ? (
               <MenuUnfoldOutlined
                 className="trigger"
-                onClick={() => setCollapsed(!collapsed)}
+                onClick={() => setCollapsed(false)}
                 style={{ fontSize: 18, cursor: "pointer", color: "#1890ff" }}
               />
             ) : (
               <MenuFoldOutlined
                 className="trigger"
-                onClick={() => setCollapsed(!collapsed)}
+                onClick={() => setCollapsed(true)}
                 style={{ fontSize: 18, cursor: "pointer", color: "#1890ff" }}
               />
             )}

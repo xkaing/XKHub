@@ -1,0 +1,20 @@
+{
+  "SupabaseConfig": {
+    "supabaseURL": "https://faltruhdczvgyfltmick.supabase.co",
+    "supabaseKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhbHRydWhkY3p2Z3lmbHRtaWNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzI1NDQsImV4cCI6MjA3ODI0ODU0NH0.qNbVMxGAd0nW75AGB4lqnVaK30lRRyD7FAaMiW5BZuA",
+    "profilesTable": "profiles",
+    "momentsTable": "moments",
+    "imageBucket": "image",
+    "avatarPathPrefix": "avatars",
+    "momentImagePathPrefix": "moments",
+    "imageCompressionQuality": 1.0,
+    "maxFileSize": 5242880,
+    "allowedImageMimeTypes": [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp"
+    ]
+  }
+}
