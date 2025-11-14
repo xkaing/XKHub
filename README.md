@@ -2,6 +2,14 @@
 
 一个基于 React + Vite + Supabase 的现代化 Web 应用，提供 PSN 奖杯管理、Warhammer 内容管理和 XKALLive 社区功能。
 
+## 🌐 在线访问
+
+项目已部署到 Vercel，可通过以下地址访问：
+
+**访问地址**: [https://www.xiaokai.wang/](https://www.xiaokai.wang/)
+
+**Vercel 部署地址**: [https://vercel.com/xkaings-projects](https://vercel.com/xkaings-projects)
+
 ## ✨ 功能特性
 
 ### 🔐 用户认证
