@@ -13,8 +13,8 @@ function App() {
   const { themeMode, setThemeMode, getCurrentTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [userInfoCollapsed, setUserInfoCollapsed] = useState(false);
-  const [selectedKey, setSelectedKey] = useState("psn-trophies");
-  const [openKeys, setOpenKeys] = useState(["psn"]);
+  const [selectedKey, setSelectedKey] = useState("xkailive-account");
+  const [openKeys, setOpenKeys] = useState(["xkailive"]);
 
   // 配置 Ant Design 主题
   const currentTheme = getCurrentTheme();
