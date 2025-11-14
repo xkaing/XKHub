@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ConfigProvider, Menu, Typography, Card, Dropdown, Button, Avatar } from "antd";
+import { ConfigProvider, Menu, Typography, Card, Dropdown, Button, Avatar, Tabs, Table } from "antd";
 import { theme } from "antd";
 import {
   MenuFoldOutlined,
@@ -57,10 +57,133 @@ const W40KContent = () => {
 
 // XKALLive 页面内容
 const XKALLiveContent = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 获取用户列表
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("获取用户列表失败:", error);
+        return;
+      }
+
+      setUsers(data || []);
+    } catch (error) {
+      console.error("获取用户列表异常:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // 表格列定义
+  const userColumns = [
+    {
+      title: "头像",
+      dataIndex: "avatar_url",
+      key: "avatar_url",
+      width: 80,
+      render: (avatarUrl) => <Avatar src={avatarUrl} icon={<UserOutlined />} size={40} />,
+    },
+    {
+      title: "昵称",
+      dataIndex: "nickname",
+      key: "nickname",
+      render: (nickname) => nickname || "未设置",
+    },
+    {
+      title: "邮箱",
+      dataIndex: "email",
+      key: "email",
+      render: (email) => email || "-",
+    },
+
+    {
+      title: "创建时间",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (createdAt) => {
+        if (!createdAt) return "-";
+        return new Date(createdAt).toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      },
+    },
+    {
+      title: "更新时间",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      render: (updatedAt) => {
+        if (!updatedAt) return "-";
+        return new Date(updatedAt).toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      },
+    },
+    {
+      title: "最后登录时间",
+      dataIndex: "last_sign_in_at",
+      key: "last_sign_in_at",
+      render: (lastSignInAt) => {
+        if (!lastSignInAt) return "-";
+        return new Date(lastSignInAt).toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      },
+    },
+  ];
+
+  const tabItems = [
+    {
+      key: "users",
+      label: "用户",
+      children: (
+        <Table
+          columns={userColumns}
+          dataSource={users}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条记录`,
+          }}
+        />
+      ),
+    },
+    {
+      key: "bots",
+      label: "机器人",
+      children: <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>机器人管理功能开发中...</div>,
+    },
+  ];
+
   return (
     <div>
-      <Title level={2}>XKALLive</Title>
-      <p>这是 XKALLive 页面的内容区域</p>
+      <Title level={2}>账号管理</Title>
+      <Tabs items={tabItems} />
     </div>
   );
 };
@@ -131,7 +254,6 @@ function App() {
   const fetchUserProfile = async (userData) => {
     try {
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userData.id).single();
-      console.log("获取用户信息：", data);
 
       if (error) {
         console.error("获取用户资料失败:", error);
@@ -356,7 +478,7 @@ function App() {
             padding: 0,
             transition: "width 0.2s",
           }}
-          bodyStyle={{ padding: 0, height: "100%", display: "flex", flexDirection: "column" }}
+          styles={{ body: { padding: 0, height: "100%", display: "flex", flexDirection: "column" } }}
         >
           <div
             className="logo"
