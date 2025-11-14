@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Form, Input, Button, Checkbox, message } from "antd";
+import { Form, Input, Button, Checkbox, App } from "antd";
 import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone, MailOutlined } from "@ant-design/icons";
 import { supabase } from "../lib/supabase";
 import "./Login.css";
 
 const Login = ({ onLoginSuccess }) => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginForm] = Form.useForm();
@@ -27,7 +28,6 @@ const Login = ({ onLoginSuccess }) => {
 
       if (data.user) {
         message.success("登录成功！");
-        console.log("xkai-login-success", data.user);
         onLoginSuccess(data.user);
       }
     } catch (error) {
@@ -40,9 +40,9 @@ const Login = ({ onLoginSuccess }) => {
   const onRegisterFinish = async (values) => {
     setLoading(true);
     try {
-      const { email, password, nickname } = values;
+      const { email, password } = values;
 
-      // 注册用户
+      // 注册用户（不操作 profiles 表，因为需要邮箱验证后才能登录）
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -55,40 +55,13 @@ const Login = ({ onLoginSuccess }) => {
       }
 
       if (authData.user) {
-        const userId = authData.user.id;
-
-        // 生成随机头像（基于用户 ID，确保每个用户有固定的随机头像）
-        // 使用用户 ID 的前8个字符（去掉连字符）作为种子
-        const seed = userId.replace(/-/g, "").substring(0, 8);
-        const avatarUrl = `https://picsum.photos/seed/${seed}/50/50`;
-
-        // 创建用户资料
-        try {
-          const { error: profileError } = await supabase.from("profiles").upsert({
-            id: userId,
-            nickname: nickname,
-            email: email,
-            avatar_url: avatarUrl,
-          });
-
-          if (profileError) {
-            console.warn("⚠️ 创建用户资料失败，但用户已注册:", profileError);
-            // 即使创建 profile 失败，用户也已经注册成功
-            message.warning("注册成功，但创建用户资料时出现问题，请稍后重新登录");
-          } else {
-            message.success("注册成功！");
-          }
-        } catch (profileError) {
-          console.warn("⚠️ 创建用户资料异常，但用户已注册:", profileError);
-          message.warning("注册成功，但创建用户资料时出现问题，请稍后重新登录");
-        }
-
-        // 注册成功后自动登录
+        // 注册成功后自动登录（如果邮箱验证已关闭）
         if (authData.session) {
+          message.success("注册成功！");
           onLoginSuccess(authData.user);
         } else {
           // 如果 Supabase 需要邮箱验证，提示用户
-          message.info("注册成功！请检查邮箱并验证账户后登录");
+          message.success("注册成功！请检查邮箱并验证账户后登录");
           setIsRegistering(false);
           registerForm.resetFields();
         }
@@ -182,18 +155,6 @@ const Login = ({ onLoginSuccess }) => {
                   ]}
                 >
                   <Input prefix={<MailOutlined />} placeholder="Email" className="login-input" />
-                </Form.Item>
-
-                <Form.Item
-                  name="nickname"
-                  label="昵称"
-                  rules={[
-                    { required: true, message: "请输入昵称" },
-                    { min: 2, message: "昵称至少需要2个字符" },
-                    { max: 20, message: "昵称不能超过20个字符" },
-                  ]}
-                >
-                  <Input prefix={<UserOutlined />} placeholder="昵称" className="login-input" />
                 </Form.Item>
 
                 <Form.Item

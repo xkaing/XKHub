@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ConfigProvider, Card } from "antd";
+import { ConfigProvider, Card, App as AntdApp } from "antd";
 import { theme } from "antd";
 import { useAuth } from "./hooks/useAuth";
 import { useTheme } from "./hooks/useTheme";
@@ -9,7 +9,7 @@ import Sidebar from "./components/Sidebar";
 import "./App.css";
 
 function App() {
-  const { user, profile, loading, handleLoginSuccess, handleLogout } = useAuth();
+  const { user, profile, loading, handleLoginSuccess, handleLogout, handleProfileUpdate } = useAuth();
   const { themeMode, setThemeMode, getCurrentTheme } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
   const [userInfoCollapsed, setUserInfoCollapsed] = useState(false);
@@ -32,16 +32,18 @@ function App() {
   if (loading) {
     return (
       <ConfigProvider theme={antdTheme}>
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div>加载中...</div>
-        </div>
+        <AntdApp>
+          <div
+            style={{
+              minHeight: "100vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div>加载中...</div>
+          </div>
+        </AntdApp>
       </ConfigProvider>
     );
   }
@@ -50,52 +52,57 @@ function App() {
   if (!user) {
     return (
       <ConfigProvider theme={antdTheme}>
-        <Login onLoginSuccess={handleLoginSuccess} />
+        <AntdApp>
+          <Login onLoginSuccess={handleLoginSuccess} />
+        </AntdApp>
       </ConfigProvider>
     );
   }
 
   return (
     <ConfigProvider theme={antdTheme}>
-      <div
-        style={{
-          minHeight: "100vh",
-          background: currentTheme === "dark" ? "#141414" : "#f5f5f5",
-          padding: "20px",
-          display: "flex",
-          gap: "20px",
-          transition: "background-color 0.3s",
-        }}
-      >
-        <Sidebar
-          user={user}
-          profile={profile}
-          collapsed={collapsed}
-          selectedKey={selectedKey}
-          openKeys={openKeys}
-          onOpenKeysChange={setOpenKeys}
-          onMenuClick={({ key }) => setSelectedKey(key)}
-          themeMode={themeMode}
-          onThemeChange={setThemeMode}
-          currentTheme={currentTheme}
-          userInfoCollapsed={userInfoCollapsed}
-          onToggleUserInfo={() => setUserInfoCollapsed(!userInfoCollapsed)}
-          onLogout={handleLogout}
-        />
-        <Card
-          className="content-card"
+      <AntdApp>
+        <div
           style={{
-            flex: 1,
-            height: "calc(100vh - 40px)",
-            overflow: "auto",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-            padding: "24px",
+            minHeight: "100vh",
+            background: currentTheme === "dark" ? "#141414" : "#f5f5f5",
+            padding: "20px",
+            display: "flex",
+            gap: "20px",
+            transition: "background-color 0.3s",
           }}
         >
-          {renderContent()}
-        </Card>
-      </div>
+          <Sidebar
+            user={user}
+            profile={profile}
+            collapsed={collapsed}
+            selectedKey={selectedKey}
+            openKeys={openKeys}
+            onOpenKeysChange={setOpenKeys}
+            onMenuClick={({ key }) => setSelectedKey(key)}
+            themeMode={themeMode}
+            onThemeChange={setThemeMode}
+            currentTheme={currentTheme}
+            userInfoCollapsed={userInfoCollapsed}
+            onToggleUserInfo={() => setUserInfoCollapsed(!userInfoCollapsed)}
+            onLogout={handleLogout}
+            onProfileUpdate={handleProfileUpdate}
+          />
+          <Card
+            className="content-card"
+            style={{
+              flex: 1,
+              height: "calc(100vh - 40px)",
+              overflow: "auto",
+              borderRadius: "12px",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+              padding: "24px",
+            }}
+          >
+            {renderContent()}
+          </Card>
+        </div>
+      </AntdApp>
     </ConfigProvider>
   );
 }

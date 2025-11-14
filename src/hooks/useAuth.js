@@ -51,25 +51,16 @@ export const useAuth = () => {
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userData.id).single();
 
       if (error) {
-        console.error("获取用户资料失败:", error);
-        setProfile({
-          avatar_url: null,
-          username: userData?.email?.split("@")[0] || "用户",
-        });
+        // 如果 profile 不存在（比如新注册的用户），返回 null，让 Sidebar 使用邮箱@前面的字符串
+        console.log("用户资料不存在，将使用邮箱作为昵称:", error);
+        setProfile(null);
       } else {
-        setProfile(
-          data || {
-            avatar_url: null,
-            username: userData?.email?.split("@")[0] || "用户",
-          }
-        );
+        setProfile(data);
       }
     } catch (error) {
       console.error("获取用户资料异常:", error);
-      setProfile({
-        avatar_url: null,
-        username: userData?.email?.split("@")[0] || "用户",
-      });
+      // 出错时也返回 null，让 Sidebar 使用邮箱作为昵称
+      setProfile(null);
     }
   };
 
@@ -95,11 +86,19 @@ export const useAuth = () => {
     }
   };
 
+  // 更新用户资料
+  const handleProfileUpdate = async () => {
+    if (user) {
+      await fetchUserProfile(user);
+    }
+  };
+
   return {
     user,
     profile,
     loading,
     handleLoginSuccess,
     handleLogout,
+    handleProfileUpdate,
   };
 };
