@@ -6,10 +6,9 @@ const TheHorusHeresyPage = () => {
   return (
     <div>
       <Title level={2}>THE HORUS HERESY</Title>
-      <p>这是 THE HORUS HERESY 页面的内容区域</p>
+      <p>TheHorusHeresyPage</p>
     </div>
   );
 };
 
 export default TheHorusHeresyPage;
-
