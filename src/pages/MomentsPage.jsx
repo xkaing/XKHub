@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Typography, Table, Avatar } from "antd";
+import { Typography, Table, Avatar, Button, App } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import { supabase } from "../lib/supabase";
 import { formatDateTime } from "../utils/dateFormat";
@@ -7,6 +7,7 @@ import { formatDateTime } from "../utils/dateFormat";
 const { Title } = Typography;
 
 const MomentsPage = () => {
+  const { message } = App.useApp();
   const [moments, setMoments] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -14,10 +15,7 @@ const MomentsPage = () => {
   const fetchMoments = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("moments")
-        .select("*")
-        .order("publish_time", { ascending: false });
+      const { data, error } = await supabase.from("moments").select("*").order("publish_time", { ascending: false });
 
       if (error) {
         console.error("获取动态列表失败:", error);
@@ -35,6 +33,11 @@ const MomentsPage = () => {
   useEffect(() => {
     fetchMoments();
   }, []);
+
+  // AI评论处理函数
+  const handleAIComment = (record) => {
+    message.warning("AI评论功能正在开发中，敬请期待！", 3);
+  };
 
   // 表格列定义
   const momentsColumns = [
@@ -56,9 +59,7 @@ const MomentsPage = () => {
       dataIndex: "user_avatar_url",
       key: "user_avatar_url",
       width: 100,
-      render: (avatarUrl) => (
-        <Avatar src={avatarUrl} icon={<UserOutlined />} size={40} />
-      ),
+      render: (avatarUrl) => <Avatar src={avatarUrl} icon={<UserOutlined />} size={40} />,
     },
     {
       title: "发布时间",
@@ -109,6 +110,17 @@ const MomentsPage = () => {
         );
       },
     },
+    {
+      title: "操作",
+      key: "action",
+      width: 120,
+      fixed: "right",
+      render: (_, record) => (
+        <Button className="ai-comment-button" onClick={() => handleAIComment(record)}>
+          AI评论
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -131,4 +143,3 @@ const MomentsPage = () => {
 };
 
 export default MomentsPage;
-

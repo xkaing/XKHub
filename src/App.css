@@ -120,3 +120,79 @@
   background: #1f1f1f !important;
   border-color: #2a2a2a !important;
 }
+
+/* W40K页面 - 大桌面每行5个军团卡片 */
+@media (min-width: 1200px) {
+  .legion-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+  }
+  
+  .legion-row .legion-col {
+    flex: 0 0 calc(20% - 12.8px) !important;
+    max-width: calc(20% - 12.8px) !important;
+    width: calc(20% - 12.8px) !important;
+  }
+}
+
+/* AI评论按钮 - 炫酷渐变色效果 */
+.ai-comment-button {
+  position: relative !important;
+  overflow: hidden !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.ai-comment-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.ai-comment-button:hover::before {
+  left: 100%;
+}
+
+.ai-comment-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6) !important;
+  background: linear-gradient(135deg, #7c8ef5 0%, #8a5fb8 50%, #f5a5ff 100%) !important;
+}
+
+.ai-comment-button:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* 添加光泽效果 */
+.ai-comment-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
