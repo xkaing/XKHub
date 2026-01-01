@@ -196,3 +196,14 @@
   pointer-events: none;
   border-radius: inherit;
 }
+
+/* 军团卡片样式 - 大阴影和悬停浮动效果 */
+.legion-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.legion-card:hover {
+  transform: translateY(-8px) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.5) !important;
+}

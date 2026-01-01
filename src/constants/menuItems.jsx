@@ -38,13 +38,13 @@ export const menuItems = [
     icon: <FolderOpenOutlined />,
     children: [
       {
-        key: "warhammer-40k",
-        label: "40K",
+        key: "warhammer-30k",
+        label: "30K",
         icon: <FileTextOutlined />,
       },
       {
-        key: "warhammer-the-horus-heresy",
-        label: "THE HORUS HERESY",
+        key: "warhammer-40k",
+        label: "40K",
         icon: <FileTextOutlined />,
       },
     ],
