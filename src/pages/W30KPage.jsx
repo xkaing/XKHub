@@ -9,7 +9,7 @@ const romanToChinese = (roman) => {
     "VI": "六", "VII": "七", "VIII": "八", "IX": "九", "X": "十",
     "XI": "十一", "XII": "十二", "XIII": "十三", "XIV": "十四", "XV": "十五",
     "XVI": "十六", "XVII": "十七", "XVIII": "十八", "XIX": "十九", "XX": "二十"
-  };
+  }
   return map[roman] || roman;
 };
 
@@ -24,7 +24,8 @@ const legions = [
     heroes: [
       { name: "Luther", nameCN: "路瑟", tags: [] },
       { name: "Corswain", nameCN: "科斯温", tags: [] },
-      { name: "Zahariel", nameCN: "扎哈里尔", tags: [] }
+      { name: "Zahariel", nameCN: "扎哈里尔", tags: [] },
+      { name: "", nameCN: "阿斯特兰", tags: ["第一连长","堕天使"] }
     ]
   },
   { 
@@ -42,9 +43,10 @@ const legions = [
     primarch: "Fulgrim", 
     primarchCN: "福格瑞姆",
     heroes: [
-      { name: "Eidolon", nameCN: "艾多隆", tags: [] },
+      { name: "Eidolon", nameCN: "艾多隆", tags: ["第一连长"] },
       { name: "Lucius", nameCN: "卢修斯", tags: [] },
-      { name: "Rylanor", nameCN: "莱拉诺", tags: [] }
+      { name: "", nameCN: "法比乌斯·拜尔", tags: ["首席药剂师"] },
+      { name: "", nameCN: "索尔·塔维兹", tags: ["第三连长"] }
     ]
   },
   { 
@@ -55,7 +57,7 @@ const legions = [
     primarchCN: "佩图拉博",
     heroes: [
       { name: "Warsmith Dantioch", nameCN: "战争铁匠丹提奥克", tags: [] },
-      { name: "Forrix", nameCN: "福里克斯", tags: [] },
+      { name: "Forrix", nameCN: "福瑞克斯", tags: ["第一连长"] },
       { name: "Kroeger", nameCN: "克罗格", tags: [] }
     ]
   },
@@ -67,8 +69,9 @@ const legions = [
     primarchCN: "察合台可汗",
     heroes: [
       { name: "Yesugei", nameCN: "耶苏盖", tags: [] },
-      { name: "Qin Xa", nameCN: "秦夏", tags: [] },
-      { name: "Torghun Khan", nameCN: "托尔贡可汗", tags: [] }
+      { name: "Qin Xa", nameCN: "秦夏", tags: ["怯薛之主"] },
+      { name: "Torghun Khan", nameCN: "托尔贡可汗", tags: [] },
+      { name: "", nameCN: "朱巴汗", tags: ["第一连长","狩猎大师"] }
     ]
   },
   { 
@@ -90,7 +93,7 @@ const legions = [
     primarch: "Rogal Dorn", 
     primarchCN: "罗格·多恩",
     heroes: [
-      { name: "Sigismund", nameCN: "西吉斯蒙德", tags: ["第一连长", "黑色圣堂"] },
+      { name: "Sigismund", nameCN: "西吉斯蒙德", tags: ["第一连长", "黑色圣堂首任大元帅","原体之下第一人","第一个帝皇冠军"] },
       { name: "Alexis Polux", nameCN: "亚历克西斯·波鲁克斯", tags: [] },
       { name: "Camba Diaz", nameCN: "坎巴·迪亚兹", tags: [] }
     ]
@@ -144,9 +147,9 @@ const legions = [
     name: "World Eaters", 
     nameCN: "吞世者", 
     primarch: "Angron", 
-    primarchCN: "安格隆·阿格隆",
+    primarchCN: "安格隆",
     heroes: [
-      { name: "Kharn", nameCN: "卡恩", tags: [] },
+      { name: "Kharn", nameCN: "卡恩", tags: ["第八连长"] },
       { name: "Lhorke", nameCN: "洛尔克", tags: [] },
       { name: "Delvarus", nameCN: "德尔瓦鲁斯", tags: [] }
     ]
@@ -194,9 +197,9 @@ const legions = [
     primarch: "Horus Lupercal", 
     primarchCN: "荷鲁斯",
     heroes: [
-      { name: "Abaddon", nameCN: "阿巴顿", tags: ["第一连长","黑色军团", "混沌战帅"] },
+      { name: "Abaddon", nameCN: "阿巴顿", tags: ["第一连长","四王议会","黑色军团", "混沌战帅"] },
       { name: "Loken", nameCN: "洛肯", tags: [] },
-      { name: "Torgaddon", nameCN: "托加顿", tags: [] }
+      { name: "Torgaddon", nameCN: "托加顿", tags: ["第二连长"] }
     ]
   },
   { 
