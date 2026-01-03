@@ -3,10 +3,10 @@ import {
   TrophyOutlined,
   BankOutlined,
   TagOutlined,
-  FileTextOutlined,
   AppleOutlined,
   TeamOutlined,
   CloudServerOutlined,
+  DatabaseOutlined,
 } from "@ant-design/icons";
 
 export const menuItems = [
@@ -35,17 +35,17 @@ export const menuItems = [
   {
     key: "warhammer",
     label: "Warhammer",
-    icon: <FolderOpenOutlined />,
+    icon: <DatabaseOutlined />,
     children: [
       {
         key: "warhammer-30k",
         label: "30K",
-        icon: <FileTextOutlined />,
+        icon: <FolderOpenOutlined />,
       },
       {
         key: "warhammer-40k",
         label: "40K",
-        icon: <FileTextOutlined />,
+        icon: <FolderOpenOutlined />,
       },
     ],
   },

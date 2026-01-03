@@ -1,5 +1,6 @@
 import { Typography, Tabs } from "antd";
 import W40KIcons from "../components/W40KIcons";
+import W40KIconsImage from "../components/W40KIconsImage";
 
 const { Title } = Typography;
 
@@ -28,9 +29,68 @@ const W40KPage = () => {
         </div>
       ),
       children: (
-        <div>
-          <p>帝国之军内容</p>
-        </div>
+        <Tabs
+          tabPosition="left"
+          defaultActiveKey="sisters"
+          items={[
+            {
+              key: "sisters",
+              label: (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                  <W40KIconsImage type="sisters" />
+                  <span>修女会</span>
+                </div>
+              ),
+              children: (
+                <div>
+                  <p>修女会内容</p>
+                </div>
+              ),
+            },
+            {
+              key: "custodes",
+              label: (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                  <W40KIconsImage type="custodes" />
+                  <span>帝国禁军</span>
+                </div>
+              ),
+              children: (
+                <div>
+                  <p>帝国禁军内容</p>
+                </div>
+              ),
+            },
+            {
+              key: "mechanicus",
+              label: (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                  <W40KIconsImage type="mechanicus" />
+                  <span>机械修会</span>
+                </div>
+              ),
+              children: (
+                <div>
+                  <p>机械修会内容</p>
+                </div>
+              ),
+            },
+            {
+              key: "imperial-guard",
+              label: (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                  <W40KIconsImage type="imperial-guard" />
+                  <span>帝国卫队</span>
+                </div>
+              ),
+              children: (
+                <div>
+                  <p>帝国卫队内容</p>
+                </div>
+              ),
+            },
+          ]}
+        />
       ),
     },
     {
