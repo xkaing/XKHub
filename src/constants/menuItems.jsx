@@ -47,6 +47,11 @@ export const menuItems = [
         label: "40K",
         icon: <FolderOpenOutlined />,
       },
+      {
+        key: "warhammer-joytoy",
+        label: "JOYTOY",
+        icon: <FolderOpenOutlined />,
+      },
     ],
   },
   {
