@@ -14,6 +14,18 @@ const JOYTOYPage = () => {
     }
   };
 
+  // 标签颜色映射
+  const getTagColor = (tag) => {
+    const colorMap = {
+      "未发货": "red", // 红色 - 警告状态
+      "40K": "blue", // 蓝色 - 主要系列
+      "30K": "orange", // 橙色 - 区分于40K
+      "The Horus Heresy": "purple", // 紫色 - 与30K相关
+      "Space Marine 2": "green", // 绿色 - 游戏相关
+    };
+    return colorMap[tag] || "default"; // 默认灰色
+  };
+
   // 表格列定义
   const columns = [
     {
@@ -78,15 +90,23 @@ const JOYTOYPage = () => {
       dataIndex: "tags",
       key: "tags",
       width: 150,
-      render: (tags) => (
-        <>
-          {tags.map((tag) => (
-            <Tag key={tag} color="blue">
-              {tag}
-            </Tag>
-          ))}
-        </>
-      ),
+      render: (tags) => {
+        // 对标签进行排序，将"未发货"放在第一位
+        const sortedTags = [...tags].sort((a, b) => {
+          if (a === "未发货") return -1;
+          if (b === "未发货") return 1;
+          return 0;
+        });
+        return (
+          <>
+            {sortedTags.map((tag) => (
+              <Tag key={tag} color={getTagColor(tag)}>
+                {tag}
+              </Tag>
+            ))}
+          </>
+        );
+      },
     },
   ];
 
