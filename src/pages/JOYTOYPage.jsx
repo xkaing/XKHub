@@ -5,13 +5,15 @@ const { Title } = Typography;
 
 const JOYTOYPage = () => {
   const getImageUrl = (url) => {
-    try {
-      // 使用 new URL 动态导入图片
-      return new URL(url, import.meta.url).href;
-    } catch (error) {
-      console.error("加载图片失败:", error);
+    // 如果已经是绝对路径（以 / 开头），直接返回
+    // 如果是相对路径，转换为绝对路径
+    if (url.startsWith('/')) {
       return url;
     }
+    if (url.startsWith('../assets/')) {
+      return url.replace('../assets/', '/assets/');
+    }
+    return url;
   };
 
   // 标签颜色映射
