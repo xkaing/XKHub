@@ -31,7 +31,15 @@ const Login = ({ onLoginSuccess }) => {
         onLoginSuccess(data.user);
       }
     } catch (error) {
-      message.error("登录时发生错误，请稍后重试");
+      const isNetworkError =
+        error?.message?.includes("fetch") ||
+        error?.message?.includes("NetworkError") ||
+        error?.name === "TypeError";
+      message.error(
+        isNetworkError
+          ? "无法连接 Supabase，请检查网络或稍后重试（若刚恢复项目请等待 1～2 分钟）"
+          : "登录时发生错误，请稍后重试"
+      );
       setLoading(false);
     }
   };
