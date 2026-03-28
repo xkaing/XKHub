@@ -1,77 +1,164 @@
-# AI 助手说明文档
+# AI Assistant Guidelines for XKHub
 
-本文档说明在本项目（XKHub）中使用的 Cursor AI 助手的能力、已做过的配置与修复，以及如何更好地与助手协作。
+## 项目概述
 
----
+XKHub 是一个基于 Next.js + Supabase 的全栈 Web 应用，提供 PSN 奖杯管理、Warhammer 内容管理和社区功能。
 
-## 我是谁
+## 技术栈
 
-- 我是 **Cursor 中的 AI 编程助手**（Agent Router，可称呼为 Auto），在你在 Cursor 里写代码、改配置、排查问题时协助你。
-- 我会根据你打开的文件、选中的代码、终端输出和项目结构来理解上下文，并用**简体中文**回复。
-- 我可以：阅读/编辑代码、搜索项目、运行命令、查文档、帮你写 README/注释/脚本等，但不会主动执行高风险操作（如直接改生产环境），需要你确认的会说明。
+- **框架**: Next.js 14 (App Router)
+- **UI**: Ant Design 5
+- **后端**: Supabase
+- **语言**: TypeScript
 
----
+## 目录结构规范
 
-## 在本项目中已协助完成的事项
+```
+src/
+├── app/                      # Next.js App Router（基于文件系统的路由）
+│   ├── (auth)/              # 认证路由组（不需要认证）
+│   │   └── login/
+│   ├── (dashboard)/         # 仪表盘路由组（需要认证）
+│   │   ├── accounts/
+│   │   ├── moments/
+│   │   ├── psn/trophies/
+│   │   ├── psn/companies/
+│   │   ├── psn/ips/
+│   │   └── warhammer/40k/
+│   │       └── warhammer/30k/
+│   │       └── warhammer/joytoy/
+│   ├── layout.tsx           # 根布局
+│   └── page.tsx             # 首页（重定向到 /accounts 或 /login）
+├── components/              # 可复用组件
+│   └── dashboard/           # 仪表盘专用组件
+├── lib/                     # 工具库
+│   ├── supabase/           # Supabase 相关
+│   │   ├── client.ts       # 浏览器端客户端
+│   │   ├── server.ts       # 服务端客户端
+│   │   └── auth.ts         # Server Actions
+│   └── utils/              # 工具函数
+├── hooks/                   # React Hooks（客户端）
+├── types/                   # TypeScript 类型定义
+└── data/                    # 静态数据文件
+```
 
-以下是与本项目或你本机环境相关、已经做过的事情，方便你或后续对话复用。
+## 组件规范
 
-### 1. Node.js / nvm 环境
+### Server vs Client Components
 
-- **现象**：按官方用 nvm 安装了 Node.js，在终端里仍报 `zsh: command not found: node`。
-- **原因**：nvm 需要每次在 shell 启动时加载（`source ~/.nvm/nvm.sh`），没有写入 zsh 配置则新开的终端找不到 `node`。
-- **处理**：把 nvm 的加载写进 `~/.zshrc`（在 Oh My Zsh 安装后再追加即可）：
-  ```bash
-  export NVM_DIR="$HOME/.nvm"
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  ```
-  保存后执行 `source ~/.zshrc` 或新开终端即可使用 `node` / `npm`。
+- **Server Components** (`async function`): 用于直接获取数据，不需要交互
+- **Client Components** (`'use client'`): 用于需要 hooks、事件处理、Ant Design 组件
 
-### 2. Oh My Zsh 安装与主题
+### Ant Design 组件使用
 
-- 你已安装 Oh My Zsh；若遇到 GitHub clone 报错 **"Error in the HTTP2 framing layer"**，可先执行：
-  ```bash
-  git config --global http.version HTTP/1.1
-  ```
-  再重新运行 Oh My Zsh 安装脚本。
-- 主题推荐：**Powerlevel10k**（需 Nerd Font，如 MesloLGS NF）或内置 **agnoster**（也建议用 Powerline/Nerd 字体）。
+由于 Ant Design 与 Next.js SSR 存在兼容性问题，所有使用 Ant Design 的页面和组件必须：
 
-### 3. 项目内的 npm 警告
+1. 添加 `'use client'` 指令
+2. 或者将 Ant Design 组件封装在客户端组件中
 
-- **现象**：在本项目下运行 `npm -v` 或 `npm install` 出现：`Unknown project config "always-auth"`。
-- **原因**：根目录 `.npmrc` 中曾包含已废弃的 `always-auth=false`。
-- **处理**：已从 `.npmrc` 中移除该配置；当前仅保留 `registry=https://registry.npmjs.org/`，警告已消除。
+### 推荐的组件结构
 
----
+```typescript
+// 客户端组件：包含 Ant Design 或需要交互
+'use client'
 
-## 项目技术栈（便于助手理解）
+import { useState } from 'react'
+import { Button } from 'antd'
 
-- **前端**：React 18 + Vite 7 + Ant Design 5
-- **后端/服务**：Supabase（认证、数据库、存储）
-- **功能**：PSN 奖杯、Warhammer 内容、XKALLive 社区、主题切换等  
-更完整的结构、脚本和规范见项目根目录 **README.md**。
+export default function MyClientComponent() {
+  const [loading, setLoading] = useState(false)
 
----
+  return <Button loading={loading}>Click</Button>
+}
+```
 
-## 如何更好地使用我
+```typescript
+// 服务端组件：直接获取数据
+import { createClient } from '@/lib/supabase/server'
 
-1. **说清目标**：例如「帮我在 XKHub 里加一个 xxx 页面」或「这段报错是什么意思」，我会结合项目结构回答。
-2. **贴报错/终端**：把完整报错或终端输出贴出来（或 @ 终端文件），便于精确定位。
-3. **指定文件**：用 `@文件名` 或说明「在 `src/pages/xxx.jsx` 里」可以让我直接针对该文件修改或解释。
-4. **环境相关**：若问题与 node 版本、npm、zsh 有关，可简单说「我用的 zsh / nvm / Oh My Zsh」，我会按你当前环境给命令。
+export default async function MyServerPage() {
+  const supabase = await createClient()
+  const { data } = await supabase.from('table').select('*')
 
----
+  return <div>{JSON.stringify(data)}</div>
+}
+```
 
-## 常用命令速查（本项目）
+## 认证流程
 
-| 用途       | 命令           |
-|------------|----------------|
-| 安装依赖   | `npm install`  |
-| 本地开发   | `npm run dev`  |
-| 生产构建   | `npm run build` |
-| 预览构建   | `npm run preview` |
-| 代码检查   | `npm run lint` |
+### Middleware 保护
 
----
+`middleware.ts` 保护所有 `(dashboard)` 路由：
 
-本文档由 AI 助手生成并维护，如有增改需求可直接在对话中说明。
+- 未登录用户访问仪表盘路由时重定向到 `/login`
+- 已登录用户访问 `/login` 时重定向到 `/accounts`
+
+### Server Actions
+
+认证相关的操作在 `src/lib/supabase/auth.ts` 中通过 Server Actions 处理：
+
+- `loginAction(formData)`: 登录
+- `logoutAction()`: 登出
+
+## 数据库操作
+
+### 客户端操作（客户端组件）
+
+```typescript
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+const { data } = await supabase.from('table').select('*')
+```
+
+### 服务端操作（Server Components）
+
+```typescript
+import { createClient } from '@/lib/supabase/server'
+
+export default async function Page() {
+  const supabase = await createClient()
+  const { data } = await supabase.from('table').select('*')
+
+  return <div>{/* render */}</div>
+}
+```
+
+## 环境变量
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=       # Supabase 项目 URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=  # Supabase Anon Key（客户端可用）
+SUPABASE_SERVICE_ROLE_KEY=      # Service Role Key（仅服务端）
+```
+
+## 代码风格
+
+- 使用 TypeScript 进行类型检查
+- 组件文件使用 `.tsx` 扩展名
+- 纯类型文件使用 `.ts` 扩展名
+- 组件名称使用 PascalCase
+- 函数和变量使用 camelCase
+- 优先使用 named exports 而不是 default exports（除页面组件外）
+
+## 常见任务
+
+### 添加新页面
+
+1. 在 `src/app/(dashboard)/` 下创建目录
+2. 创建 `page.tsx` 文件
+3. 在 Dashboard Layout 的菜单中添加对应项
+
+### 添加 Supabase 表操作
+
+1. 在 `src/types/index.ts` 中添加类型定义
+2. 根据场景选择使用客户端或服务端 Supabase 实例
+3. 添加相应的数据获取/操作函数
+
+### 修改主题
+
+主题逻辑在 `src/components/ThemeProvider.tsx` 中管理，包括：
+
+- 主题模式（light/dark/auto）
+- Ant Design ConfigProvider 配置
+- localStorage 持久化
