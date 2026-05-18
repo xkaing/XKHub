@@ -1,12 +1,22 @@
 import type { Metadata } from 'next'
-import { AntdRegistry } from '@ant-design/nextjs-registry'
-import ThemeProvider from '@/components/ThemeProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'XKHub',
-  description: 'XKHub - Your personal hub',
+  description: '个人数据后台，用于整理模型、游戏、奖杯和消费记录。',
 }
+
+const themeScript = `
+(() => {
+  const media = window.matchMedia('(prefers-color-scheme: dark)')
+  const applyTheme = () => {
+    const mode = localStorage.getItem('themeMode') || 'system'
+    document.documentElement.classList.toggle('dark', mode === 'dark' || (mode === 'system' && media.matches))
+  }
+  applyTheme()
+  media.addEventListener('change', applyTheme)
+})()
+`
 
 export default function RootLayout({
   children,
@@ -14,11 +24,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body>
-        <AntdRegistry>
-          <ThemeProvider>{children}</ThemeProvider>
-        </AntdRegistry>
+        {/* 在 React 水合前写入主题类，避免深色模式首屏闪烁。 */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {children}
       </body>
     </html>
   )

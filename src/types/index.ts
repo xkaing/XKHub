@@ -1,45 +1,42 @@
-export interface Profile {
-  id: string
-  email: string
-  nickname: string | null
-  avatar_url: string | null
-  created_at: string
-  updated_at: string
-  last_sign_in_at: string | null
-}
+export type CurrencyCode = 'CNY' | 'USD' | 'JPY'
 
-export interface AIBot {
-  id: string
-  nickname: string | null
-  description: string | null
-  avatar_url: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface Moment {
-  id: string
-  content: string
-  image_urls: string[] | null
-  created_at: string
-  updated_at: string
-  profile_id: string
-}
-
-export interface GameIP {
+export interface ModelItem {
   id: string
   name: string
-  description: string | null
-  image_url: string | null
-  created_at: string
-  updated_at: string
+  brand: string
+  ip: string | null
+  universe: string | null
+  series: string | null
+  faction: string | null
+  characterName: string | null
+  imageUrl: string | null
+  storagePath: string | null
+  purchaseDate: string | null
+  originalPrice: number | null
+  purchasePrice: number | null
+  currency: CurrencyCode
+  purchasePlatform: string | null
+  seller: string | null
+  orderNo: string | null
+  status: ModelItemStatus
+  tags: string[]
+  note: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-export interface GameCompany {
-  id: string
-  name: string
-  description: string | null
-  logo_url: string | null
-  created_at: string
-  updated_at: string
+export type ModelItemStatus = 'wishlist' | 'preorder' | 'shipped' | 'owned' | 'cancelled' | 'sold' | 'gifted'
+
+export interface Metric {
+  label: string
+  value: string
+  detail: string
+}
+
+export interface DataModule {
+  title: string
+  description: string
+  href: string
+  status: 'ready' | 'designing' | 'planned'
+  records: string
 }
