@@ -13,6 +13,11 @@ export function getModelMetrics(items: ModelItem[]): Metric[] {
       detail: 'Supabase 记录',
     },
     {
+      label: '原价总额',
+      value: `¥${totalOriginal.toLocaleString('zh-CN')}`,
+      detail: '按原价汇总',
+    },
+    {
       label: '实付金额',
       value: `¥${totalPaid.toLocaleString('zh-CN')}`,
       detail: '按购买价汇总',

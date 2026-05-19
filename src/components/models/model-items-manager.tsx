@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import Image from 'next/image'
-import { Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 
 import { MetricCard } from '@/components/metric-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -79,6 +79,9 @@ type ModelFormState = {
   note: string
 }
 
+type SortKey = 'price' | 'status' | 'purchaseDate'
+type SortDirection = 'asc' | 'desc'
+
 const emptyForm: ModelFormState = {
   name: '',
   brand: 'JOYTOY',
@@ -125,8 +128,8 @@ const brandOptions = ['JOYTOY', 'LEGO', 'BANDAI']
 const ipOptions = ['Warhammer', 'GUNDAM']
 const universeOptions = ['Warhammer 30K', 'Warhammer 40K']
 const seriesOptions = ['Warhammer 40K', '星际战士2', '荷鲁斯之乱']
-const purchasePlatformOptions = ['淘宝', '京东', '咸鱼', '线下']
-const sellerOptions = ['暗源旗舰店', '暗源线下店']
+const purchasePlatformOptions = ['淘宝', '京东', '咸鱼', '线下店', '线下会展']
+const sellerOptions = ['暗源旗舰店', '暗源线下店', '会展展台']
 const characterRoleOptions = ['连长', '战团长', '基因原体']
 
 const legionGroups = [
@@ -161,6 +164,10 @@ const legionGroups = [
   {
     label: '其他',
     options: ['禁军', '修女'],
+  },
+  {
+    label: '二次建军',
+    options: ['黑色军团', '黑色圣堂'],
   },
 ]
 
@@ -241,6 +248,10 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
+function getStatusRank(status: ModelItemStatus) {
+  return statusOptions.findIndex((option) => option.value === status)
+}
+
 export function ModelItemsManager() {
   const [items, setItems] = useState<ModelItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -249,12 +260,54 @@ export function ModelItemsManager() {
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ModelItem | null>(null)
+  const [previewItem, setPreviewItem] = useState<ModelItem | null>(null)
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null)
   const [form, setForm] = useState<ModelFormState>(emptyForm)
 
   const metrics = useMemo(() => getModelMetrics(items), [items])
+  const sortedItems = useMemo(() => {
+    if (!sort) return items
+
+    return [...items].sort((first, second) => {
+      let result = 0
+
+      if (sort.key === 'price') {
+        const firstPrice = first.purchasePrice
+        const secondPrice = second.purchasePrice
+        const firstMissing = firstPrice === null
+        const secondMissing = secondPrice === null
+
+        if (firstMissing && secondMissing) return 0
+        if (firstMissing) return 1
+        if (secondMissing) return -1
+        result = firstPrice - secondPrice
+      } else if (sort.key === 'purchaseDate') {
+        const firstDate = first.purchaseDate ? new Date(first.purchaseDate).getTime() : null
+        const secondDate = second.purchaseDate ? new Date(second.purchaseDate).getTime() : null
+        const firstMissing = firstDate === null || Number.isNaN(firstDate)
+        const secondMissing = secondDate === null || Number.isNaN(secondDate)
+
+        if (firstMissing && secondMissing) return 0
+        if (firstMissing) return 1
+        if (secondMissing) return -1
+        result = firstDate - secondDate
+      } else {
+        result = getStatusRank(first.status) - getStatusRank(second.status)
+      }
+
+      return sort.direction === 'asc' ? result : -result
+    })
+  }, [items, sort])
 
   const updateForm = <K extends keyof ModelFormState>(key: K, value: ModelFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  const toggleSort = (key: SortKey) => {
+    setSort((current) => {
+      if (current?.key !== key) return { key, direction: 'asc' }
+      return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+    })
   }
 
   const fetchItems = async () => {
@@ -394,7 +447,7 @@ export function ModelItemsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {metrics.map((metric) => (
           <MetricCard key={metric.label} metric={metric} />
         ))}
@@ -410,7 +463,6 @@ export function ModelItemsManager() {
         <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <CardTitle>模型列表</CardTitle>
-            <CardDescription>数据完全来自 Supabase `model_items`，图片上传到 Storage bucket `{bucketName}`。</CardDescription>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={fetchItems} disabled={loading}>
@@ -445,19 +497,51 @@ export function ModelItemsManager() {
                   <TableHead className="w-20">图片</TableHead>
                   <TableHead className="w-36">名称</TableHead>
                   <TableHead>分类</TableHead>
-                  <TableHead>购买</TableHead>
-                  <TableHead className="w-22 text-right">价格</TableHead>
-                  <TableHead className="w-22">状态</TableHead>
+                  <TableHead>
+                    <SortHeaderButton
+                      active={sort?.key === 'purchaseDate'}
+                      direction={sort?.direction}
+                      onClick={() => toggleSort('purchaseDate')}
+                    >
+                      购买
+                    </SortHeaderButton>
+                  </TableHead>
+                  <TableHead className="w-22 text-right">
+                    <SortHeaderButton
+                      active={sort?.key === 'price'}
+                      direction={sort?.direction}
+                      align="right"
+                      onClick={() => toggleSort('price')}
+                    >
+                      价格
+                    </SortHeaderButton>
+                  </TableHead>
+                  <TableHead className="w-22">
+                    <SortHeaderButton
+                      active={sort?.key === 'status'}
+                      direction={sort?.direction}
+                      onClick={() => toggleSort('status')}
+                    >
+                      状态
+                    </SortHeaderButton>
+                  </TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {sortedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="relative size-14 overflow-hidden rounded-md border bg-muted">
                         {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
+                          <button
+                            type="button"
+                            className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => setPreviewItem(item)}
+                            title="预览图片"
+                          >
+                            <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
+                          </button>
                         ) : (
                           <div className="flex size-full items-center justify-center text-muted-foreground">
                             <ImagePlus className="size-5" />
@@ -638,7 +722,49 @@ export function ModelItemsManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={Boolean(previewItem)} onOpenChange={(open) => (!open ? setPreviewItem(null) : null)}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>{previewItem?.name ?? '图片预览'}</DialogTitle>
+          </DialogHeader>
+          {previewItem?.imageUrl ? (
+            <div className="relative min-h-[60vh] overflow-hidden rounded-md border bg-muted">
+              <Image src={previewItem.imageUrl} alt={previewItem.name} fill className="object-contain" sizes="90vw" />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function SortHeaderButton({
+  active,
+  direction,
+  align = 'left',
+  onClick,
+  children,
+}: {
+  active: boolean
+  direction?: SortDirection
+  align?: 'left' | 'right'
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  const Icon = active ? (direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+
+  return (
+    <button
+      type="button"
+      className={`inline-flex w-full items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${
+        align === 'right' ? 'justify-end' : 'justify-start'
+      }`}
+      onClick={onClick}
+    >
+      {children}
+      <Icon className="size-3.5" />
+    </button>
   )
 }
 

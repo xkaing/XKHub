@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge'
 
 interface PageHeaderProps {
   title: string
-  description: string
+  description?: string
   eyebrow?: string
   badge?: string
 }
@@ -16,7 +16,7 @@ export function PageHeader({ title, description, eyebrow, badge }: PageHeaderPro
       </div>
       <div className="max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-normal text-foreground md:text-4xl">{title}</h1>
-        <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p>
+        {description ? <p className="mt-3 text-base leading-7 text-muted-foreground">{description}</p> : null}
       </div>
     </div>
   )
