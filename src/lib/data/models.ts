@@ -3,7 +3,7 @@ import type { Metric, ModelItem } from '@/types'
 export function getModelMetrics(items: ModelItem[]): Metric[] {
   const totalOriginal = items.reduce((sum, item) => sum + (item.originalPrice ?? 0), 0)
   const totalPaid = items.reduce((sum, item) => sum + (item.purchasePrice ?? 0), 0)
-  const activePreorders = items.filter((item) => item.status === 'preorder' || item.status === 'shipped').length
+  const activePreorders = items.filter((item) => item.status === 'preorder').length
   const owned = items.filter((item) => item.status === 'owned').length
 
   return [
@@ -30,7 +30,7 @@ export function getModelMetrics(items: ModelItem[]): Metric[] {
     {
       label: '待跟进',
       value: `${activePreorders}`,
-      detail: `已入库 ${owned} 件`,
+      detail: `入库 ${owned} 件`,
     },
   ]
 }

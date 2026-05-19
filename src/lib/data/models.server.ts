@@ -19,7 +19,7 @@ type ModelItemRow = {
   purchase_platform: string | null
   seller: string | null
   order_no: string | null
-  status: ModelItem['status'] | null
+  status: string | null
   tags: string[] | null
   note: string | null
   created_at: string
@@ -30,6 +30,12 @@ function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function normalizeStatus(status: string | null | undefined): ModelItem['status'] {
+  if (status === 'gifted') return 'gifted'
+  if (status === 'preorder' || status === 'shipped' || status === 'wishlist') return 'preorder'
+  return 'owned'
 }
 
 function fromRow(row: ModelItemRow): ModelItem {
@@ -51,7 +57,7 @@ function fromRow(row: ModelItemRow): ModelItem {
     purchasePlatform: row.purchase_platform,
     seller: row.seller,
     orderNo: row.order_no,
-    status: row.status ?? 'owned',
+    status: normalizeStatus(row.status),
     tags: row.tags ?? [],
     note: row.note,
     createdAt: row.created_at,

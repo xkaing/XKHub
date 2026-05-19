@@ -29,7 +29,7 @@ create table if not exists public.model_items (
   order_no text,
 
   status text not null default 'owned'
-    check (status in ('wishlist', 'preorder', 'shipped', 'owned', 'cancelled', 'sold', 'gifted')),
+    check (status in ('preorder', 'owned', 'gifted')),
 
   tags text[] not null default '{}',
   note text,

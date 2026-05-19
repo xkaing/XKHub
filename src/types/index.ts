@@ -25,7 +25,7 @@ export interface ModelItem {
   updatedAt: string
 }
 
-export type ModelItemStatus = 'wishlist' | 'preorder' | 'shipped' | 'owned' | 'cancelled' | 'sold' | 'gifted'
+export type ModelItemStatus = 'preorder' | 'owned' | 'gifted'
 
 export interface Metric {
   label: string

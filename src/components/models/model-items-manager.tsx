@@ -58,7 +58,7 @@ type ModelItemRow = {
   purchase_platform: string | null
   seller: string | null
   order_no: string | null
-  status: ModelItemStatus | null
+  status: string | null
   tags: string[] | null
   note: string | null
   created_at: string
@@ -100,7 +100,7 @@ const emptyForm: ModelFormState = {
   brand: 'JOYTOY',
   ip: 'Warhammer',
   universe: 'Warhammer 40K',
-  series: 'Warhammer 40K',
+  series: 'Warhammer 40,000',
   faction: '',
   characterName: '',
   imageUrl: '',
@@ -118,29 +118,21 @@ const emptyForm: ModelFormState = {
 }
 
 const statusText: Record<ModelItemStatus, string> = {
-  wishlist: '想买',
-  preorder: '预订',
-  shipped: '运输中',
-  owned: '已入库',
-  cancelled: '已取消',
-  sold: '已出',
-  gifted: '已赠送',
+  preorder: '预定',
+  owned: '入库',
+  gifted: '赠送',
 }
 
 const statusOptions: Array<{ value: ModelItemStatus; label: string }> = [
-  { value: 'wishlist', label: '想买' },
-  { value: 'preorder', label: '预订' },
-  { value: 'shipped', label: '运输中' },
-  { value: 'owned', label: '已入库' },
-  { value: 'cancelled', label: '已取消' },
-  { value: 'sold', label: '已出' },
-  { value: 'gifted', label: '已赠送' },
+  { value: 'preorder', label: '预定' },
+  { value: 'owned', label: '入库' },
+  { value: 'gifted', label: '赠送' },
 ]
 
 const brandOptions = ['JOYTOY', 'LEGO', 'BANDAI']
 const ipOptions = ['Warhammer', 'GUNDAM']
 const universeOptions = ['Warhammer 30K', 'Warhammer 40K']
-const seriesOptions = ['Warhammer 40K', '星际战士2', '荷鲁斯之乱', '秘密关卡']
+const seriesOptions = ['Warhammer 40,000', 'The Horus Heresy', 'Space Marine 2', 'Secret Level']
 const purchasePlatformOptions = ['淘宝', '京东', '咸鱼', '线下店', '线下会展']
 const sellerOptions = ['暗源旗舰店', '暗源线下店', '会展展台']
 const characterRoleOptions = ['连长', '战团长', '基因原体']
@@ -220,6 +212,19 @@ function formatFaction(value: string | null) {
     .replace(/\s+Alpha Legion$/, '')
 }
 
+function formatSeries(value: string | null) {
+  if (!value) return null
+
+  const seriesMap: Record<string, string> = {
+    'Warhammer 40K': 'Warhammer 40,000',
+    荷鲁斯之乱: 'The Horus Heresy',
+    星际战士2: 'Space Marine 2',
+    秘密关卡: 'Secret Level',
+  }
+
+  return seriesMap[value] ?? value
+}
+
 function fromRow(row: ModelItemRow): ModelItem {
   return {
     id: row.id,
@@ -227,7 +232,7 @@ function fromRow(row: ModelItemRow): ModelItem {
     brand: row.brand,
     ip: row.ip,
     universe: row.universe,
-    series: row.series,
+    series: formatSeries(row.series),
     faction: formatFaction(row.faction),
     characterName: row.character_name,
     imageUrl: row.image_url,
@@ -239,7 +244,7 @@ function fromRow(row: ModelItemRow): ModelItem {
     purchasePlatform: row.purchase_platform,
     seller: row.seller,
     orderNo: row.order_no,
-    status: row.status ?? 'owned',
+    status: normalizeStatus(row.status),
     tags: row.tags ?? [],
     note: row.note,
     createdAt: row.created_at,
@@ -286,6 +291,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function getStatusRank(status: ModelItemStatus) {
   return statusOptions.findIndex((option) => option.value === status)
+}
+
+function normalizeStatus(status: string | null | undefined): ModelItemStatus {
+  if (status === 'gifted') return 'gifted'
+  if (status === 'preorder' || status === 'shipped' || status === 'wishlist') return 'preorder'
+  return 'owned'
 }
 
 function uniqueOptions(values: Array<string | null>) {
@@ -631,10 +642,11 @@ export function ModelItemsManager() {
                         </SortHeaderButton>
                       </TableHead>
                       <TableHead className="w-22 text-right">优惠</TableHead>
-                      <TableHead className="w-22">
+                      <TableHead className="w-22 text-right">
                         <SortHeaderButton
                           active={sort?.key === 'status'}
                           direction={sort?.direction}
+                          align="right"
                           onClick={() => toggleSort('status')}
                         >
                           状态
@@ -691,10 +703,10 @@ export function ModelItemsManager() {
                             ? '-'
                             : `¥${(item.originalPrice - item.purchasePrice).toLocaleString('zh-CN')}`}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap text-right">
                           <Badge
                             className="whitespace-nowrap"
-                            variant={item.status === 'preorder' || item.status === 'shipped' ? 'destructive' : 'secondary'}
+                            variant={item.status === 'preorder' ? 'destructive' : 'secondary'}
                           >
                             {statusText[item.status]}
                           </Badge>
