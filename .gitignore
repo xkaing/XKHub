@@ -29,3 +29,6 @@ build
 *.sln
 *.sw?
 .minimax
+
+# Personal exports
+exports/
