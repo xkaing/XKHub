@@ -127,7 +127,7 @@ const statusOptions: Array<{ value: ModelItemStatus; label: string }> = [
 const brandOptions = ['JOYTOY', 'LEGO', 'BANDAI']
 const ipOptions = ['Warhammer', 'GUNDAM']
 const universeOptions = ['Warhammer 30K', 'Warhammer 40K']
-const seriesOptions = ['Warhammer 40K', '星际战士2', '荷鲁斯之乱']
+const seriesOptions = ['Warhammer 40K', '星际战士2', '荷鲁斯之乱', '秘密关卡']
 const purchasePlatformOptions = ['淘宝', '京东', '咸鱼', '线下店', '线下会展']
 const sellerOptions = ['暗源旗舰店', '暗源线下店', '会展展台']
 const characterRoleOptions = ['连长', '战团长', '基因原体']
@@ -136,29 +136,29 @@ const legionGroups = [
   {
     label: '忠诚派',
     options: [
-      '第一军团 暗黑天使 Dark Angels',
-      '第五军团 白色伤疤 White Scars',
-      '第六军团 太空野狼 Space Wolves',
-      '第七军团 帝国之拳 Imperial Fists',
-      '第九军团 圣血天使 Blood Angels',
-      '第十军团 钢铁之手 Iron Hands',
-      '第十三军团 极限战士 Ultramarines',
-      '第十八军团 火蜥蜴 Salamanders',
-      '第十九军团 暗鸦守卫 Raven Guard',
+      '第一军团 暗黑天使',
+      '第五军团 白色伤疤',
+      '第六军团 太空野狼',
+      '第七军团 帝国之拳',
+      '第九军团 圣血天使',
+      '第十军团 钢铁之手',
+      '第十三军团 极限战士',
+      '第十八军团 火蜥蜴',
+      '第十九军团 暗鸦守卫',
     ],
   },
   {
     label: '叛乱派',
     options: [
-      "第三军团 帝皇之子 Emperor's Children",
-      '第四军团 钢铁勇士 Iron Warriors',
-      '第八军团 暗夜领主 Night Lords',
-      '第十二军团 吞世者 World Eaters',
-      '第十四军团 死亡守卫 Death Guard',
-      '第十五军团 千子 Thousand Sons',
-      '第十六军团 荷鲁斯之子 Sons of Horus',
-      '第十七军团 怀言者 Word Bearers',
-      '第二十军团 阿尔法军团 Alpha Legion',
+      '第三军团 帝皇之子',
+      '第四军团 钢铁勇士',
+      '第八军团 暗夜领主',
+      '第十二军团 吞世者',
+      '第十四军团 死亡守卫',
+      '第十五军团 千子',
+      '第十六军团 荷鲁斯之子',
+      '第十七军团 怀言者',
+      '第二十军团 阿尔法军团',
     ],
   },
   {
@@ -184,6 +184,29 @@ function toText(value: string | null | undefined) {
   return normalized ? normalized : null
 }
 
+function formatFaction(value: string | null) {
+  if (!value) return null
+  return value
+    .replace(/\s+Dark Angels$/, '')
+    .replace(/\s+White Scars$/, '')
+    .replace(/\s+Space Wolves$/, '')
+    .replace(/\s+Imperial Fists$/, '')
+    .replace(/\s+Blood Angels$/, '')
+    .replace(/\s+Iron Hands$/, '')
+    .replace(/\s+Ultramarines$/, '')
+    .replace(/\s+Salamanders$/, '')
+    .replace(/\s+Raven Guard$/, '')
+    .replace(/\s+Emperor's Children$/, '')
+    .replace(/\s+Iron Warriors$/, '')
+    .replace(/\s+Night Lords$/, '')
+    .replace(/\s+World Eaters$/, '')
+    .replace(/\s+Death Guard$/, '')
+    .replace(/\s+Thousand Sons$/, '')
+    .replace(/\s+Sons of Horus$/, '')
+    .replace(/\s+Word Bearers$/, '')
+    .replace(/\s+Alpha Legion$/, '')
+}
+
 function fromRow(row: ModelItemRow): ModelItem {
   return {
     id: row.id,
@@ -192,7 +215,7 @@ function fromRow(row: ModelItemRow): ModelItem {
     ip: row.ip,
     universe: row.universe,
     series: row.series,
-    faction: row.faction,
+    faction: formatFaction(row.faction),
     characterName: row.character_name,
     imageUrl: row.image_url,
     storagePath: row.storage_path,
@@ -556,8 +579,7 @@ export function ModelItemsManager() {
                       </div>
                     </TableCell>
                     <TableCell className="min-w-44 text-sm text-muted-foreground">
-                      <div>{[item.ip, item.universe].filter(Boolean).join(' / ') || '-'}</div>
-                      <div>{[item.series, item.faction].filter(Boolean).join(' / ')}</div>
+                      <div>{[item.series, item.faction].filter(Boolean).join(' / ') || '-'}</div>
                     </TableCell>
                     <TableCell className="min-w-36 text-sm text-muted-foreground">
                       <div>{item.purchaseDate || '-'}</div>
