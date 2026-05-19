@@ -55,4 +55,22 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /* 修正原生日期控件在深色模式下图标过暗的问题。 */
+  input[type='date'] {
+    color-scheme: light dark;
+  }
+
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.75;
+  }
+
+  .dark input[type='date']::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  .date-picker-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+  }
 }

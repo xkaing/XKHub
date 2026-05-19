@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import Image from 'next/image'
-import { ArrowDown, ArrowUp, ArrowUpDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 
 import { MetricCard } from '@/components/metric-card'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -81,6 +89,11 @@ type ModelFormState = {
 
 type SortKey = 'price' | 'status' | 'purchaseDate'
 type SortDirection = 'asc' | 'desc'
+type FilterState = {
+  series: string[]
+  faction: string[]
+  characterName: string[]
+}
 
 const emptyForm: ModelFormState = {
   name: '',
@@ -167,7 +180,7 @@ const legionGroups = [
   },
   {
     label: '二次建军',
-    options: ['黑色军团', '黑色圣堂'],
+    options: ['黑色军团', '黑色圣堂', '堕落天使'],
   },
 ]
 
@@ -275,6 +288,10 @@ function getStatusRank(status: ModelItemStatus) {
   return statusOptions.findIndex((option) => option.value === status)
 }
 
+function uniqueOptions(values: Array<string | null>) {
+  return Array.from(new Set(values.filter((value): value is string => Boolean(value))))
+}
+
 export function ModelItemsManager() {
   const [items, setItems] = useState<ModelItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -285,13 +302,42 @@ export function ModelItemsManager() {
   const [editingItem, setEditingItem] = useState<ModelItem | null>(null)
   const [previewItem, setPreviewItem] = useState<ModelItem | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null)
+  const [filters, setFilters] = useState<FilterState>({
+    series: [],
+    faction: [],
+    characterName: [],
+  })
   const [form, setForm] = useState<ModelFormState>(emptyForm)
 
   const metrics = useMemo(() => getModelMetrics(items), [items])
-  const sortedItems = useMemo(() => {
-    if (!sort) return items
+  const seriesFilterOptions = useMemo(
+    () => uniqueOptions([...seriesOptions, ...items.map((item) => item.series)]),
+    [items]
+  )
+  const factionFilterOptions = useMemo(
+    () => uniqueOptions([...legionGroups.flatMap((group) => group.options), ...items.map((item) => item.faction)]),
+    [items]
+  )
+  const characterFilterOptions = useMemo(
+    () => uniqueOptions([...characterRoleOptions, ...items.map((item) => item.characterName)]),
+    [items]
+  )
+  const filteredItems = useMemo(
+    () =>
+      items.filter((item) => {
+        const matchesSeries = filters.series.length === 0 || (item.series ? filters.series.includes(item.series) : false)
+        const matchesFaction = filters.faction.length === 0 || (item.faction ? filters.faction.includes(item.faction) : false)
+        const matchesCharacter =
+          filters.characterName.length === 0 || (item.characterName ? filters.characterName.includes(item.characterName) : false)
 
-    return [...items].sort((first, second) => {
+        return matchesSeries && matchesFaction && matchesCharacter
+      }),
+    [filters, items]
+  )
+  const sortedItems = useMemo(() => {
+    if (!sort) return filteredItems
+
+    return [...filteredItems].sort((first, second) => {
       let result = 0
 
       if (sort.key === 'price') {
@@ -320,7 +366,7 @@ export function ModelItemsManager() {
 
       return sort.direction === 'asc' ? result : -result
     })
-  }, [items, sort])
+  }, [filteredItems, sort])
 
   const updateForm = <K extends keyof ModelFormState>(key: K, value: ModelFormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -330,6 +376,18 @@ export function ModelItemsManager() {
     setSort((current) => {
       if (current?.key !== key) return { key, direction: 'asc' }
       return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+    })
+  }
+
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters((current) => ({ ...current, [key]: value }))
+  }
+
+  const toggleFilter = <K extends keyof FilterState>(key: K, option: string) => {
+    setFilters((current) => {
+      const selected = current[key]
+      const next = selected.includes(option) ? selected.filter((value) => value !== option) : [...selected, option]
+      return { ...current, [key]: next }
     })
   }
 
@@ -514,107 +572,149 @@ export function ModelItemsManager() {
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-20">图片</TableHead>
-                  <TableHead className="w-36">名称</TableHead>
-                  <TableHead>分类</TableHead>
-                  <TableHead>
-                    <SortHeaderButton
-                      active={sort?.key === 'purchaseDate'}
-                      direction={sort?.direction}
-                      onClick={() => toggleSort('purchaseDate')}
-                    >
-                      购买
-                    </SortHeaderButton>
-                  </TableHead>
-                  <TableHead className="w-22 text-right">
-                    <SortHeaderButton
-                      active={sort?.key === 'price'}
-                      direction={sort?.direction}
-                      align="right"
-                      onClick={() => toggleSort('price')}
-                    >
-                      价格
-                    </SortHeaderButton>
-                  </TableHead>
-                  <TableHead className="w-22">
-                    <SortHeaderButton
-                      active={sort?.key === 'status'}
-                      direction={sort?.direction}
-                      onClick={() => toggleSort('status')}
-                    >
-                      状态
-                    </SortHeaderButton>
-                  </TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="relative size-14 overflow-hidden rounded-md border bg-muted">
-                        {item.imageUrl ? (
-                          <button
-                            type="button"
-                            className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => setPreviewItem(item)}
-                            title="预览图片"
-                          >
-                            <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
-                          </button>
-                        ) : (
-                          <div className="flex size-full items-center justify-center text-muted-foreground">
-                            <ImagePlus className="size-5" />
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <MultiFilterSelect
+                  label="系列"
+                  value={filters.series}
+                  onClear={() => updateFilter('series', [])}
+                  onToggle={(value) => toggleFilter('series', value)}
+                  options={seriesFilterOptions}
+                  allLabel="全部系列"
+                />
+                <MultiFilterSelect
+                  label="军团"
+                  value={filters.faction}
+                  onClear={() => updateFilter('faction', [])}
+                  onToggle={(value) => toggleFilter('faction', value)}
+                  options={factionFilterOptions}
+                  allLabel="全部军团"
+                />
+                <MultiFilterSelect
+                  label="角色"
+                  value={filters.characterName}
+                  onClear={() => updateFilter('characterName', [])}
+                  onToggle={(value) => toggleFilter('characterName', value)}
+                  options={characterFilterOptions}
+                  allLabel="全部角色"
+                />
+              </div>
+
+              {sortedItems.length === 0 ? (
+                <div className="flex min-h-48 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+                  没有符合条件的模型
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-20">图片</TableHead>
+                      <TableHead className="w-36">名称</TableHead>
+                      <TableHead>分类</TableHead>
+                      <TableHead>
+                        <SortHeaderButton
+                          active={sort?.key === 'purchaseDate'}
+                          direction={sort?.direction}
+                          onClick={() => toggleSort('purchaseDate')}
+                        >
+                          购买
+                        </SortHeaderButton>
+                      </TableHead>
+                      <TableHead className="w-22 text-right">
+                        <SortHeaderButton
+                          active={sort?.key === 'price'}
+                          direction={sort?.direction}
+                          align="right"
+                          onClick={() => toggleSort('price')}
+                        >
+                          价格
+                        </SortHeaderButton>
+                      </TableHead>
+                      <TableHead className="w-22 text-right">优惠</TableHead>
+                      <TableHead className="w-22">
+                        <SortHeaderButton
+                          active={sort?.key === 'status'}
+                          direction={sort?.direction}
+                          onClick={() => toggleSort('status')}
+                        >
+                          状态
+                        </SortHeaderButton>
+                      </TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="relative size-14 overflow-hidden rounded-md border bg-muted">
+                            {item.imageUrl ? (
+                              <button
+                                type="button"
+                                className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => setPreviewItem(item)}
+                                title="预览图片"
+                              >
+                                <Image src={item.imageUrl} alt={item.name} fill className="object-cover" sizes="56px" />
+                              </button>
+                            ) : (
+                              <div className="flex size-full items-center justify-center text-muted-foreground">
+                                <ImagePlus className="size-5" />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="w-36">
-                      <div className="font-medium">{item.name}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {[item.brand, item.characterName].filter(Boolean).join(' / ') || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell className="min-w-44 text-sm text-muted-foreground">
-                      <div>{[item.series, item.faction].filter(Boolean).join(' / ') || '-'}</div>
-                    </TableCell>
-                    <TableCell className="min-w-36 text-sm text-muted-foreground">
-                      <div>{item.purchaseDate || '-'}</div>
-                      <div>{[item.purchasePlatform, item.seller].filter(Boolean).join(' / ')}</div>
-                    </TableCell>
-                    <TableCell className="w-22 whitespace-nowrap text-right">
-                      <div className="font-medium">
-                        {item.purchasePrice === null ? '-' : `¥${item.purchasePrice.toLocaleString('zh-CN')}`}
-                      </div>
-                      <div className="whitespace-nowrap text-xs text-muted-foreground">
-                        原价 {item.originalPrice === null ? '-' : `¥${item.originalPrice.toLocaleString('zh-CN')}`}
-                      </div>
-                    </TableCell>
-                    <TableCell className="w-22 whitespace-nowrap">
-                      <Badge
-                        className="whitespace-nowrap"
-                        variant={item.status === 'preorder' || item.status === 'shipped' ? 'destructive' : 'secondary'}
-                      >
-                        {statusText[item.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openEditDialog(item)} title="编辑">
-                          <Edit className="size-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" onClick={() => deleteItem(item)} title="删除">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="w-48">
+                          <div className="font-medium">{item.name}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {[item.faction, item.characterName].filter(Boolean).join(' / ') || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div>{item.ip || '-'}</div>
+                          <div>{item.series || '-'}</div>
+                        </TableCell>
+                        <TableCell className="w-36 text-sm text-muted-foreground">
+                          <div>{item.purchaseDate || '-'}</div>
+                          <div>{[item.purchasePlatform, item.seller].filter(Boolean).join(' / ')}</div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right">
+                          <div className="font-medium">
+                            {item.purchasePrice === null ? '-' : `¥${item.purchasePrice.toLocaleString('zh-CN')}`}
+                          </div>
+                          <div className="whitespace-nowrap text-xs text-muted-foreground">
+                            原价 {item.originalPrice === null ? '-' : `¥${item.originalPrice.toLocaleString('zh-CN')}`}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-right">
+                          {item.originalPrice === null || item.purchasePrice === null
+                            ? '-'
+                            : `¥${(item.originalPrice - item.purchasePrice).toLocaleString('zh-CN')}`}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge
+                            className="whitespace-nowrap"
+                            variant={item.status === 'preorder' || item.status === 'shipped' ? 'destructive' : 'secondary'}
+                          >
+                            {statusText[item.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="icon" onClick={() => openEditDialog(item)} title="编辑">
+                              <Edit className="size-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => deleteItem(item)} title="删除">
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -672,7 +772,7 @@ export function ModelItemsManager() {
               </select>
             </Field>
             <Field label="购买日期">
-              <Input type="date" value={form.purchaseDate} onChange={(event) => updateForm('purchaseDate', event.target.value)} />
+              <DateInput value={form.purchaseDate} onChange={(value) => updateForm('purchaseDate', value)} />
             </Field>
             <Field label="原价">
               <Input type="number" value={form.originalPrice} onChange={(event) => updateForm('originalPrice', event.target.value)} placeholder="269" />
@@ -779,14 +879,59 @@ function SortHeaderButton({
   return (
     <button
       type="button"
-      className={`inline-flex w-full items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${
-        align === 'right' ? 'justify-end' : 'justify-start'
-      }`}
+      className={`inline-flex w-full items-center gap-1 whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-foreground ${align === 'right' ? 'justify-end' : 'justify-start'
+        }`}
       onClick={onClick}
     >
       {children}
       <Icon className="size-3.5" />
     </button>
+  )
+}
+
+function MultiFilterSelect({
+  label,
+  value,
+  onClear,
+  onToggle,
+  options,
+  allLabel,
+}: {
+  label: string
+  value: string[]
+  onClear: () => void
+  onToggle: (value: string) => void
+  options: string[]
+  allLabel: string
+}) {
+  const displayText = value.length === 0 ? allLabel : value.length === 1 ? value[0] : `已选 ${value.length} 项`
+
+  return (
+    <div className="space-y-2 text-sm font-medium">
+      <div>{label}</div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="w-full justify-between px-3 font-normal">
+            <span className="truncate">{displayText}</span>
+            <ChevronDown className="ml-2 size-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-64" align="start">
+          <DropdownMenuItem onClick={onClear}>{allLabel}</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {options.map((option) => (
+            <DropdownMenuCheckboxItem
+              key={option}
+              checked={value.includes(option)}
+              onCheckedChange={() => onToggle(option)}
+              onSelect={(event) => event.preventDefault()}
+            >
+              {option}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -806,6 +951,39 @@ function Field({
         {required ? <span className="ml-1 text-destructive">*</span> : null}
       </Label>
       {children}
+    </div>
+  )
+}
+
+function DateInput({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="relative">
+      <Input
+        ref={inputRef}
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="pr-10 date-picker-input"
+      />
+      <button
+        type="button"
+        className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        onClick={() => {
+          inputRef.current?.showPicker?.()
+          inputRef.current?.focus()
+        }}
+        title="选择日期"
+      >
+        <Calendar className="size-4" />
+      </button>
     </div>
   )
 }
