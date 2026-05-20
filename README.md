@@ -25,6 +25,7 @@ Run these scripts in Supabase SQL Editor:
 2. `database/model_items_open_rls_policies.sql` if RLS blocks frontend CRUD
 3. `database/alter_model_items_add_gifted_status.sql` if the table was created before `gifted` status was added
 4. `database/init_psn.sql` for PSN game, playtime, trophy, and manual purchase tables
+5. `database/alter_psn_add_title_links.sql` if the PSN tables were created before trophy-title links were added
 
 The model image Storage bucket defaults to `model-images`.
 
@@ -75,6 +76,12 @@ To also write fetched data into Supabase after the tables exist:
 npm run psn:sync -- --sync-supabase
 ```
 
+By default PSN sync is lightweight: it fetches played games and trophy-title summaries, but skips individual trophy details. To fetch and write `psn_trophies` details too:
+
+```bash
+npm run psn:sync -- --include-trophies --sync-supabase
+```
+
 To write an existing export into Supabase without calling PSN again:
 
 ```bash
@@ -82,6 +89,8 @@ npm run psn:sync -- --from-file exports/psn/latest-supabase-sync.json --sync-sup
 ```
 
 By default the script does not store NPSSO or PSN auth tokens. Only use `--save-tokens` together with `--sync-supabase` if you intentionally want the server-side `psn_auth_tokens` table to store refresh credentials.
+
+`psn_title_links` stores the mapping between played-game title IDs and trophy-title IDs. Re-run a Supabase sync after adding the table to backfill automatic matches.
 
 ## Verification
 

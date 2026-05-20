@@ -75,6 +75,22 @@ create table if not exists public.psn_trophy_titles (
   primary key (psn_account_id, np_communication_id)
 );
 
+create table if not exists public.psn_title_links (
+  psn_account_id uuid not null references public.psn_accounts(id) on delete cascade,
+  np_communication_id text not null,
+  game_id uuid not null references public.games(id) on delete cascade,
+  psn_title_id text,
+  match_method text not null,
+  match_confidence numeric(5, 2) not null default 0,
+  verified boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (psn_account_id, np_communication_id),
+  foreign key (psn_account_id, np_communication_id)
+    references public.psn_trophy_titles(psn_account_id, np_communication_id)
+    on delete cascade
+);
+
 create table if not exists public.psn_trophies (
   psn_account_id uuid not null references public.psn_accounts(id) on delete cascade,
   np_communication_id text not null,
@@ -118,6 +134,7 @@ alter table public.psn_auth_tokens enable row level security;
 alter table public.games enable row level security;
 alter table public.psn_game_progress enable row level security;
 alter table public.psn_trophy_titles enable row level security;
+alter table public.psn_title_links enable row level security;
 alter table public.psn_trophies enable row level security;
 alter table public.game_purchases enable row level security;
 
@@ -125,6 +142,7 @@ grant select on public.psn_accounts to authenticated;
 grant select on public.games to authenticated;
 grant select on public.psn_game_progress to authenticated;
 grant select on public.psn_trophy_titles to authenticated;
+grant select on public.psn_title_links to authenticated;
 grant select on public.psn_trophies to authenticated;
 grant select, insert, update, delete on public.game_purchases to authenticated;
 
@@ -145,6 +163,11 @@ using (true);
 
 create policy "authenticated can read psn trophy titles"
 on public.psn_trophy_titles for select
+to authenticated
+using (true);
+
+create policy "authenticated can read psn title links"
+on public.psn_title_links for select
 to authenticated
 using (true);
 

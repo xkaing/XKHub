@@ -1,31 +1,13 @@
 import { AppShell } from '@/components/app-shell'
 import { GamesTable } from '@/components/games/games-table'
+import { PsnAccountOverview } from '@/components/games/psn-account-overview'
 import { PsnSyncButton } from '@/components/games/psn-sync-button'
-import { MetricCard } from '@/components/metric-card'
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { getGamesData } from '@/lib/data/games.server'
-import type { Metric } from '@/types'
 
 export default async function GamesPage() {
   const { games, summary } = await getGamesData()
-  const metrics: Metric[] = [
-    {
-      label: '游戏数量',
-      value: String(summary.totalGames),
-      detail: '来自 PSN 游玩记录',
-    },
-    {
-      label: '奖杯标题',
-      value: String(summary.trophyTitles),
-      detail: '已同步的奖杯组',
-    },
-    {
-      label: '累计游玩',
-      value: formatPlaySeconds(summary.totalPlaySeconds),
-      detail: 'PSN 返回的总时长',
-    },
-  ]
 
   return (
     <AppShell>
@@ -36,18 +18,14 @@ export default async function GamesPage() {
         description="从 PSN 同步的游戏列表、游玩时长和奖杯完成度。购买记录稍后可以手动补充。"
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} metric={metric} />
-        ))}
-      </div>
+      <PsnAccountOverview summary={summary} />
 
       <Card>
         <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
           <div>
             <CardTitle>游戏列表</CardTitle>
             <CardDescription className="mt-1">
-              按最近游玩时间排序。{formatSyncedAt(summary.lastSyncedAt)}
+              按奖杯最近更新时间排序。{formatSyncedAt(summary.lastSyncedAt)}
             </CardDescription>
           </div>
           <PsnSyncButton />
@@ -66,17 +44,6 @@ function EmptyState() {
       还没有读到 PSN 游戏数据。
     </div>
   )
-}
-
-function formatPlaySeconds(seconds: number | null) {
-  if (!seconds) return '0h'
-
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-
-  if (hours >= 100) return `${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
 }
 
 function formatSyncedAt(value: string | null) {

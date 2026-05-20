@@ -63,15 +63,10 @@ async function fetchPayloadFromPsn(now) {
   const trophyTitleLimit = numberArg("max-trophy-titles");
   const selectedTrophyTitles =
     trophyTitleLimit === undefined ? trophyTitles : trophyTitles.slice(0, trophyTitleLimit);
-
-  console.log(
-    `Fetching trophy details for ${selectedTrophyTitles.length} of ${trophyTitles.length} titles...`
-  );
-  const trophyTitleDetails = await mapWithConcurrency(selectedTrophyTitles, 2, async (title, index) => {
-    const count = `${index + 1}/${selectedTrophyTitles.length}`;
-    process.stdout.write(`  ${count} ${title.trophyTitleName}\n`);
-    return fetchMergedTrophiesForTitle(authorization, title);
-  });
+  const includeTrophies = Boolean(args["include-trophies"]);
+  const trophyTitleDetails = includeTrophies
+    ? await fetchTrophyTitleDetails(authorization, trophyTitles, selectedTrophyTitles)
+    : [];
 
   const payload = {
     syncedAt: now.toISOString(),
@@ -91,6 +86,18 @@ async function fetchPayloadFromPsn(now) {
   console.log(`Wrote PSN export to ${outPath}`);
 
   return { payload, authorization };
+}
+
+async function fetchTrophyTitleDetails(authorization, trophyTitles, selectedTrophyTitles) {
+  console.log(
+    `Fetching trophy details for ${selectedTrophyTitles.length} of ${trophyTitles.length} titles...`
+  );
+
+  return mapWithConcurrency(selectedTrophyTitles, 2, async (title, index) => {
+    const count = `${index + 1}/${selectedTrophyTitles.length}`;
+    process.stdout.write(`  ${count} ${title.trophyTitleName}\n`);
+    return fetchMergedTrophiesForTitle(authorization, title);
+  });
 }
 
 function loadPayloadFromFile(filePath) {
@@ -273,13 +280,28 @@ async function syncSupabase(payload, authorization, now) {
 
   const { data: games, error: gameLookupError } = await supabase
     .from("games")
-    .select("id, psn_title_id, psn_concept_id, title")
+    .select("id, psn_title_id, psn_concept_id, title, localized_title, psn_concept_name")
     .in("psn_title_id", payload.playedGames.map((game) => game.titleId));
   if (gameLookupError) throw gameLookupError;
 
+  const gameById = new Map(games.map((game) => [game.id, game]));
   const gameByTitleId = new Map(games.map((game) => [game.psn_title_id, game]));
   const gameByConceptId = new Map(
     games.filter((game) => game.psn_concept_id !== null).map((game) => [game.psn_concept_id, game])
+  );
+  const gameByNormalizedTitle = buildGameTitleMap(games);
+  const playedGameByTitleId = new Map(payload.playedGames.map((game) => [game.titleId, game]));
+
+  const { data: verifiedLinks, error: verifiedLinksError } = await supabase
+    .from("psn_title_links")
+    .select("np_communication_id, game_id, psn_title_id, match_method, match_confidence")
+    .eq("psn_account_id", account.id)
+    .eq("verified", true);
+  const titleLinksAvailable = !isMissingRelationError(verifiedLinksError);
+  if (verifiedLinksError && titleLinksAvailable) throw verifiedLinksError;
+
+  const verifiedLinkByCommunicationId = new Map(
+    (titleLinksAvailable ? (verifiedLinks ?? []) : []).map((link) => [link.np_communication_id, link])
   );
 
   const progressRows = payload.playedGames
@@ -309,8 +331,36 @@ async function syncSupabase(payload, authorization, now) {
     if (error) throw error;
   }
 
+  const titleLinkRows = [];
   const trophyTitleRows = payload.trophyTitles.map((title) => {
-    const game = findGameForTrophyTitle(title, gameByTitleId, gameByConceptId);
+    const verifiedLink = verifiedLinkByCommunicationId.get(title.npCommunicationId);
+    const verifiedGame = verifiedLink ? gameById.get(verifiedLink.game_id) : null;
+    const match = verifiedGame ? {
+      game: verifiedGame,
+      method: verifiedLink.match_method ?? "manual",
+      confidence: Number(verifiedLink.match_confidence ?? 1),
+      verified: true
+    } : findGameForTrophyTitle(
+      title,
+      gameByTitleId,
+      gameByConceptId,
+      gameByNormalizedTitle,
+      playedGameByTitleId
+    );
+    const game = match?.game ?? null;
+
+    if (game && !match?.verified) {
+      titleLinkRows.push({
+        psn_account_id: account.id,
+        np_communication_id: title.npCommunicationId,
+        game_id: game.id,
+        psn_title_id: game.psn_title_id,
+        match_method: match.method,
+        match_confidence: match.confidence,
+        verified: false,
+        updated_at: now.toISOString(),
+      });
+    }
 
     return {
       psn_account_id: account.id,
@@ -336,6 +386,13 @@ async function syncSupabase(payload, authorization, now) {
     const { error } = await supabase
       .from("psn_trophy_titles")
       .upsert(trophyTitleRows, { onConflict: "psn_account_id,np_communication_id" });
+    if (error) throw error;
+  }
+
+  if (titleLinksAvailable && titleLinkRows.length > 0) {
+    const { error } = await supabase
+      .from("psn_title_links")
+      .upsert(titleLinkRows, { onConflict: "psn_account_id,np_communication_id" });
     if (error) throw error;
   }
 
@@ -391,15 +448,166 @@ async function syncSupabase(payload, authorization, now) {
   }
 }
 
-function findGameForTrophyTitle(title, gameByTitleId, gameByConceptId) {
+function findGameForTrophyTitle(title, gameByTitleId, gameByConceptId, gameByNormalizedTitle, playedGameByTitleId) {
   const byTitleId = gameByTitleId.get(title.npCommunicationId);
-  if (byTitleId) return byTitleId;
-
-  for (const game of gameByConceptId.values()) {
-    if (game.title === title.trophyTitleName) return game;
+  if (byTitleId) {
+    return {
+      game: byTitleId,
+      method: "np_communication_id_to_title_id",
+      confidence: 0.6
+    };
   }
 
-  return null;
+  const normalizedTrophyTitle = normalizeTitle(title.trophyTitleName);
+  const candidates = gameByNormalizedTitle.get(normalizedTrophyTitle) ?? [];
+  if (candidates.length === 1) {
+    return {
+      game: candidates[0],
+      method: "normalized_title",
+      confidence: 0.9
+    };
+  }
+  if (candidates.length > 1) {
+    return selectNearestPlayedCandidate(title, candidates, playedGameByTitleId, "normalized_title_time_nearest", 0.86);
+  }
+
+  const conceptCandidatesById = new Map();
+
+  for (const game of gameByConceptId.values()) {
+    if (normalizeTitle(game.title) === normalizedTrophyTitle) {
+      conceptCandidatesById.set(game.id, game);
+    }
+    if (game.localized_title && normalizeTitle(game.localized_title) === normalizedTrophyTitle) {
+      conceptCandidatesById.set(game.id, game);
+    }
+    if (game.psn_concept_name && normalizeTitle(game.psn_concept_name) === normalizedTrophyTitle) {
+      conceptCandidatesById.set(game.id, game);
+    }
+  }
+
+  const conceptCandidates = Array.from(conceptCandidatesById.values());
+  if (conceptCandidates.length === 1) {
+    return {
+      game: conceptCandidates[0],
+      method: "normalized_concept_name",
+      confidence: 0.84
+    };
+  }
+  if (conceptCandidates.length > 1) {
+    return selectNearestPlayedCandidate(title, conceptCandidates, playedGameByTitleId, "normalized_concept_time_nearest", 0.8);
+  }
+
+  const fuzzyCandidates = findFuzzyTitleCandidates(title.trophyTitleName, gameByNormalizedTitle);
+
+  if (fuzzyCandidates.length === 0) return null;
+  if (fuzzyCandidates.length === 1) {
+    return {
+      game: fuzzyCandidates[0],
+      method: "fuzzy_title_contains",
+      confidence: 0.7
+    };
+  }
+
+  return selectNearestPlayedCandidate(
+    title,
+    fuzzyCandidates,
+    playedGameByTitleId,
+    "fuzzy_title_time_nearest",
+    0.65
+  );
+}
+
+function selectNearestPlayedCandidate(title, candidates, playedGameByTitleId, method, confidence) {
+  const titleTime = Date.parse(title.lastUpdatedDateTime ?? "");
+
+  const game = candidates
+    .slice()
+    .sort((a, b) => {
+      const aPlayed = playedGameByTitleId.get(a.psn_title_id);
+      const bPlayed = playedGameByTitleId.get(b.psn_title_id);
+      const aDuration = parseIsoDurationSeconds(aPlayed?.playDuration) ?? 0;
+      const bDuration = parseIsoDurationSeconds(bPlayed?.playDuration) ?? 0;
+      if (aDuration !== bDuration) return bDuration - aDuration;
+
+      const aPlayCount = aPlayed?.playCount ?? 0;
+      const bPlayCount = bPlayed?.playCount ?? 0;
+      if (aPlayCount !== bPlayCount) return bPlayCount - aPlayCount;
+
+      const aDistance = getTimeDistance(aPlayed?.lastPlayedDateTime, titleTime);
+      const bDistance = getTimeDistance(bPlayed?.lastPlayedDateTime, titleTime);
+
+      if (aDistance !== bDistance) return aDistance - bDistance;
+      return Date.parse(bPlayed?.lastPlayedDateTime ?? "") - Date.parse(aPlayed?.lastPlayedDateTime ?? "");
+    })[0];
+
+  return {
+    game,
+    method,
+    confidence
+  };
+}
+
+function findFuzzyTitleCandidates(title, gameByNormalizedTitle) {
+  const trophyTitle = normalizeTitle(title);
+  if (!trophyTitle) return [];
+
+  const candidatesById = new Map();
+
+  for (const [gameTitle, games] of gameByNormalizedTitle.entries()) {
+    if (gameTitle.length < 4) continue;
+    if (trophyTitle.includes(gameTitle) || gameTitle.includes(trophyTitle)) {
+      for (const game of games) {
+        candidatesById.set(game.id, game);
+      }
+    }
+  }
+
+  return Array.from(candidatesById.values());
+}
+
+function buildGameTitleMap(games) {
+  const byTitle = new Map();
+
+  for (const game of games) {
+    for (const title of [game.title, game.localized_title, game.psn_concept_name]) {
+      if (!title) continue;
+      const key = normalizeTitle(title);
+      const current = byTitle.get(key) ?? [];
+      current.push(game);
+      byTitle.set(key, current);
+    }
+  }
+
+  return byTitle;
+}
+
+function normalizeTitle(value) {
+  const normalized = String(value ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[™®©]/g, "")
+    .replace(/[’‘]/g, "'")
+    .replace(/[:：\-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized
+    .replace(/\biv\b/g, "4")
+    .replace(/\biii\b/g, "3")
+    .replace(/\bii\b/g, "2")
+    .replace(/\bv\b/g, "5");
+}
+
+function getTimeDistance(value, targetTime) {
+  const time = Date.parse(value ?? "");
+  if (!Number.isFinite(time) || !Number.isFinite(targetTime)) return Number.MAX_SAFE_INTEGER;
+  return Math.abs(time - targetTime);
+}
+
+function isMissingRelationError(error) {
+  if (!error) return false;
+  return error.code === "42P01" || String(error.message ?? "").includes("psn_title_links");
 }
 
 function parseIsoDurationSeconds(duration) {
