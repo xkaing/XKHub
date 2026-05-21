@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import Image from 'next/image'
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
 
 import { MetricCard } from '@/components/metric-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogContent,
@@ -784,7 +785,7 @@ export function ModelItemsManager() {
               </select>
             </Field>
             <Field label="购买日期">
-              <DateInput value={form.purchaseDate} onChange={(value) => updateForm('purchaseDate', value)} />
+              <DatePicker value={form.purchaseDate} onChange={(value) => updateForm('purchaseDate', value)} />
             </Field>
             <Field label="原价">
               <Input type="number" value={form.originalPrice} onChange={(event) => updateForm('originalPrice', event.target.value)} placeholder="269" />
@@ -963,39 +964,6 @@ function Field({
         {required ? <span className="ml-1 text-destructive">*</span> : null}
       </Label>
       {children}
-    </div>
-  )
-}
-
-function DateInput({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  return (
-    <div className="relative">
-      <Input
-        ref={inputRef}
-        type="date"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="pr-10 date-picker-input"
-      />
-      <button
-        type="button"
-        className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        onClick={() => {
-          inputRef.current?.showPicker?.()
-          inputRef.current?.focus()
-        }}
-        title="选择日期"
-      >
-        <Calendar className="size-4" />
-      </button>
     </div>
   )
 }
