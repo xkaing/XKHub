@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   Bot,
+  CalendarDays,
   ChartNoAxesCombined,
   Check,
   Gamepad2,
@@ -24,6 +25,7 @@ import logo from '@/logo.png'
 
 const navItems = [
   { href: '/', label: '总览', icon: LayoutDashboard },
+  { href: '/monthly', label: '本月动态', icon: CalendarDays },
   { href: '/models', label: '模型收藏', icon: PackageSearch },
   { href: '/games', label: '游戏与奖杯', icon: Gamepad2 },
   { href: '/insights', label: '统计分析', icon: ChartNoAxesCombined },

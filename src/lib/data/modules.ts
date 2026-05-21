@@ -2,6 +2,13 @@ import type { DataModule } from '@/types'
 
 export const dataModules: DataModule[] = [
   {
+    title: '本月动态',
+    description: '本月购买模型、消费金额，以及本月游玩过的 PS5 游戏。',
+    href: '/monthly',
+    status: 'ready',
+    records: 'derived',
+  },
+  {
     title: '模型收藏',
     description: 'JOYTOY、战锤系列、购买价、状态和图片资产。',
     href: '/models',

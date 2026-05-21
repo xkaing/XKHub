@@ -8,6 +8,7 @@ export interface GameListItem {
   coverUrl: string | null
   playCount: number | null
   playDurationSeconds: number | null
+  lastPlayedAt: string | null
   lastUpdatedAt: string | null
   hasTrophyGroups: boolean
   trophyProgress: number | null
@@ -110,6 +111,8 @@ const excludedTitles = new Set(['apple music', 'apple tv', 'netflix'])
 
 const excludedSummaryPlayDurationTitles = new Set(['monster hunter world iceborne'])
 
+const shanghaiOffsetMs = 8 * 60 * 60 * 1000
+
 export async function getGamesData(): Promise<GamesData> {
   if (!hasSupabaseEnv) return emptyGamesData()
 
@@ -183,6 +186,7 @@ export async function getGamesData(): Promise<GamesData> {
           coverUrl: trophyTitle.icon_url ?? game?.cover_url ?? null,
           playCount: progress?.play_count ?? null,
           playDurationSeconds: progress?.play_duration_seconds ?? null,
+          lastPlayedAt: progress?.last_played_at ?? null,
           lastUpdatedAt: trophyTitle.last_updated_at,
           hasTrophyGroups: Boolean(trophyTitle.has_trophy_groups),
           trophyProgress: trophyTitle.progress,
@@ -215,6 +219,147 @@ export async function getGamesData(): Promise<GamesData> {
   } catch {
     return emptyGamesData()
   }
+}
+
+export async function getMonthlyPlayedGames(monthValue: string): Promise<GameListItem[]> {
+  if (!hasSupabaseEnv) return []
+
+  try {
+    const month = parseMonthValue(monthValue)
+    if (!month) return []
+
+    const range = getShanghaiMonthRange(month.year, month.monthIndex)
+    const supabase = await getReadableClient()
+    const { data: progressData, error: progressError } = await supabase
+      .from('psn_game_progress')
+      .select('game_id, play_count, play_duration_seconds, last_played_at')
+      .gte('last_played_at', range.start.toISOString())
+      .lt('last_played_at', range.end.toISOString())
+      .order('last_played_at', { ascending: false, nullsFirst: false })
+
+    if (progressError) return []
+
+    const progressRows = (progressData ?? []) as ProgressRow[]
+    const gameIds = Array.from(new Set(progressRows.map((progress) => progress.game_id)))
+    if (gameIds.length === 0) return []
+
+    const [
+      { data: gamesData, error: gamesError },
+      { data: trophyData, error: trophyError },
+      { data: linkData, error: linkError },
+    ] = await Promise.all([
+      supabase
+        .from('games')
+        .select('id, title, localized_title, platform, category, cover_url, psn_concept_name')
+        .in('id', gameIds),
+      supabase
+        .from('psn_trophy_titles')
+        .select(
+          'np_communication_id, game_id, name, platform, icon_url, has_trophy_groups, progress, earned_trophies, defined_trophies, last_updated_at'
+        )
+        .in('game_id', gameIds),
+      supabase
+        .from('psn_title_links')
+        .select('np_communication_id, game_id, psn_title_id, match_method, match_confidence, verified')
+        .in('game_id', gameIds),
+    ])
+
+    if (gamesError) return []
+
+    const gameRows = (gamesData ?? []) as GameRow[]
+    const trophyRows = trophyError ? [] : ((trophyData ?? []) as TrophyTitleRow[])
+    const titleLinkRows = linkError ? [] : ((linkData ?? []) as TitleLinkRow[])
+    const linkedCommunicationIds = Array.from(new Set(titleLinkRows.map((link) => link.np_communication_id)))
+    const linkedTrophyRows =
+      linkedCommunicationIds.length > 0
+        ? await getTrophyRowsByCommunicationId(supabase, linkedCommunicationIds)
+        : []
+
+    const gameById = new Map(gameRows.map((game) => [game.id, game]))
+    const trophiesByGameId = buildTrophiesByGameId(trophyRows, linkedTrophyRows, titleLinkRows)
+
+    return progressRows
+      .map((progress) => {
+        const game = gameById.get(progress.game_id)
+        if (!game) return null
+        if (game.category && excludedCategories.has(game.category)) return null
+        if (excludedTitles.has(normalizeTitle(game.title))) return null
+
+        const trophyTitle = getBestTrophyTitle(trophiesByGameId.get(game.id) ?? [])
+        if (!trophyTitle) return null
+
+        return {
+          id: game.id,
+          title: trophyTitle.name,
+          platform: trophyTitle.platform ?? formatGamePlatform(game),
+          category: game.category,
+          coverUrl: trophyTitle.icon_url ?? game.cover_url,
+          playCount: progress.play_count,
+          playDurationSeconds: progress.play_duration_seconds,
+          lastPlayedAt: progress.last_played_at,
+          lastUpdatedAt: trophyTitle.last_updated_at ?? progress.last_played_at,
+          hasTrophyGroups: Boolean(trophyTitle.has_trophy_groups),
+          trophyProgress: trophyTitle.progress,
+          earnedTrophies: trophyTitle.earned_trophies,
+          definedTrophies: trophyTitle.defined_trophies,
+        }
+      })
+      .filter((game): game is GameListItem => Boolean(game))
+  } catch {
+    return []
+  }
+}
+
+async function getTrophyRowsByCommunicationId(supabase: SupabaseClient, communicationIds: string[]) {
+  const { data, error } = await supabase
+    .from('psn_trophy_titles')
+    .select(
+      'np_communication_id, game_id, name, platform, icon_url, has_trophy_groups, progress, earned_trophies, defined_trophies, last_updated_at'
+    )
+    .in('np_communication_id', communicationIds)
+
+  if (error) return []
+  return (data ?? []) as TrophyTitleRow[]
+}
+
+function buildTrophiesByGameId(
+  directRows: TrophyTitleRow[],
+  linkedRows: TrophyTitleRow[],
+  titleLinkRows: TitleLinkRow[]
+) {
+  const byGameId = new Map<string, TrophyTitleRow[]>()
+
+  for (const row of directRows) {
+    if (!row.game_id) continue
+    byGameId.set(row.game_id, [...(byGameId.get(row.game_id) ?? []), row])
+  }
+
+  const linkByCommunicationId = new Map(titleLinkRows.map((link) => [link.np_communication_id, link]))
+  for (const row of linkedRows) {
+    const link = linkByCommunicationId.get(row.np_communication_id)
+    if (!link) continue
+    byGameId.set(link.game_id, [...(byGameId.get(link.game_id) ?? []), row])
+  }
+
+  return byGameId
+}
+
+function getBestTrophyTitle(rows: TrophyTitleRow[]) {
+  return rows
+    .slice()
+    .sort((a, b) => {
+      const aProgress = a.progress ?? -1
+      const bProgress = b.progress ?? -1
+      if (aProgress !== bProgress) return bProgress - aProgress
+      return Date.parse(b.last_updated_at ?? '') - Date.parse(a.last_updated_at ?? '')
+    })[0]
+}
+
+function formatGamePlatform(game: GameRow) {
+  if (game.platform) return game.platform
+  if (game.category === 'ps5_game') return 'PS5'
+  if (game.category === 'ps4_game') return 'PS4'
+  return null
 }
 
 function shouldCountSummaryPlayDuration(game: GameListItem) {
@@ -288,6 +433,31 @@ function getTimeDistance(value: string | null | undefined, targetTime: number) {
   const time = Date.parse(value ?? '')
   if (!Number.isFinite(time) || !Number.isFinite(targetTime)) return Number.MAX_SAFE_INTEGER
   return Math.abs(time - targetTime)
+}
+
+function getShanghaiMonthRange(year: number, monthIndex: number) {
+  return {
+    start: fromShanghaiDate(year, monthIndex, 1),
+    end: fromShanghaiDate(year, monthIndex + 1, 1),
+  }
+}
+
+function parseMonthValue(value: string | null | undefined) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value ?? '')
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return null
+
+  return {
+    year,
+    monthIndex: month - 1,
+  }
+}
+
+function fromShanghaiDate(year: number, month: number, day: number) {
+  return new Date(Date.UTC(year, month, day) - shanghaiOffsetMs)
 }
 
 function normalizeTitle(value: string) {
