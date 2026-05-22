@@ -16,6 +16,13 @@ export const dataModules: DataModule[] = [
     records: 'Supabase CRUD',
   },
   {
+    title: '战锤人物',
+    description: '按 30K/40K 时间段、军团或战团归档人物关系。',
+    href: '/warhammer-characters',
+    status: 'ready',
+    records: 'local taxonomy',
+  },
+  {
     title: '游戏档案',
     description: '购买平台、游戏状态、游玩时间、通关与白金进度。',
     href: '/games',
