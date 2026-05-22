@@ -7,6 +7,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import {
   exchangeAccessCodeForAuthTokens,
   exchangeNpssoForAccessCode,
+  exchangeRefreshTokenForAuthTokens,
   getProfileFromAccountId,
   getTitleTrophies,
   getUserPlayedGames,
@@ -45,9 +46,8 @@ async function main() {
 }
 
 async function fetchPayloadFromPsn(now) {
-  const npsso = await getNpsso();
-  const authorization = await authenticateWithNpsso(npsso);
-  const accountId = getAccountIdFromIdToken(authorization.idToken) ?? "me";
+  const { authorization, accountId: storedAccountId } = await getAuthorization(now);
+  const accountId = getAccountIdFromIdToken(authorization.idToken) ?? storedAccountId ?? "me";
 
   console.log("Authenticated with PSN. Fetching account summary...");
   const [profile, trophySummary] = await Promise.all([
@@ -112,6 +112,26 @@ async function authenticateWithNpsso(npsso) {
   return exchangeAccessCodeForAuthTokens(accessCode);
 }
 
+async function getAuthorization(now) {
+  const envNpsso = process.env.PSN_NPSSO?.trim();
+  if (envNpsso) {
+    return {
+      authorization: await authenticateWithNpsso(envNpsso),
+      accountId: null,
+    };
+  }
+
+  if (args["use-stored-tokens"]) {
+    return getStoredAuthorization(now);
+  }
+
+  const npsso = await getNpsso();
+  return {
+    authorization: await authenticateWithNpsso(npsso),
+    accountId: null,
+  };
+}
+
 async function getNpsso() {
   const envNpsso = process.env.PSN_NPSSO?.trim();
   if (envNpsso) return envNpsso;
@@ -134,6 +154,78 @@ async function getNpsso() {
   }
 
   return value;
+}
+
+async function getStoredAuthorization(now) {
+  const supabase = createSupabaseServiceClient();
+  const { data: tokenRows, error: tokenError } = await supabase
+    .from("psn_auth_tokens")
+    .select(
+      "psn_account_id, access_token, refresh_token, access_token_expires_at, refresh_token_expires_at, token_type, scope, updated_at"
+    )
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+
+  if (tokenError) throw tokenError;
+
+  const token = tokenRows?.[0];
+  if (!token?.refresh_token) {
+    throw new Error(
+      "No stored PSN refresh token was found. Run one sync with PSN_NPSSO and --save-tokens first."
+    );
+  }
+
+  if (token.refresh_token_expires_at && Date.parse(token.refresh_token_expires_at) <= now.getTime()) {
+    throw new Error("Stored PSN refresh token has expired. Set PSN_NPSSO and sync again to create a fresh token.");
+  }
+
+  const accountId = await getStoredPsnAccountId(supabase, token.psn_account_id);
+  const expiresIn = secondsUntil(token.access_token_expires_at, now);
+
+  if (expiresIn > 60 && token.access_token) {
+    return {
+      authorization: {
+        accessToken: token.access_token,
+        refreshToken: token.refresh_token,
+        expiresIn,
+        refreshTokenExpiresIn: secondsUntil(token.refresh_token_expires_at, now),
+        tokenType: token.token_type ?? "bearer",
+        scope: token.scope ?? "",
+      },
+      accountId,
+    };
+  }
+
+  const refreshedAuthorization = await exchangeRefreshTokenForAuthTokens(token.refresh_token);
+
+  return {
+    authorization: {
+      ...refreshedAuthorization,
+      refreshToken: refreshedAuthorization.refreshToken ?? token.refresh_token,
+      tokenType: refreshedAuthorization.tokenType ?? token.token_type ?? "bearer",
+      scope: refreshedAuthorization.scope ?? token.scope ?? "",
+    },
+    accountId,
+  };
+}
+
+async function getStoredPsnAccountId(supabase, psnAccountRowId) {
+  if (!psnAccountRowId) return null;
+
+  const { data, error } = await supabase
+    .from("psn_accounts")
+    .select("account_id")
+    .eq("id", psnAccountRowId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.account_id ?? null;
+}
+
+function secondsUntil(value, now) {
+  const expiresAt = Date.parse(value ?? "");
+  if (!Number.isFinite(expiresAt)) return undefined;
+  return Math.max(0, Math.floor((expiresAt - now.getTime()) / 1000));
 }
 
 async function readStdin() {
@@ -224,16 +316,7 @@ function mergeTrophyLists(titleTrophies, earnedTrophies) {
 }
 
 async function syncSupabase(payload, authorization, now) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-  }
-
-  const supabase = createSupabaseClient(url, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = createSupabaseServiceClient();
 
   const accountId = payload.account.accountId;
   const avatarUrl = payload.account.profile?.avatars?.find((avatar) => avatar.size === "xl")?.url
@@ -446,6 +529,19 @@ async function syncSupabase(payload, authorization, now) {
     );
     if (error) throw error;
   }
+}
+
+function createSupabaseServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  return createSupabaseClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 function findGameForTrophyTitle(title, gameByTitleId, gameByConceptId, gameByNormalizedTitle, playedGameByTitleId) {

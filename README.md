@@ -76,6 +76,18 @@ To also write fetched data into Supabase after the tables exist:
 npm run psn:sync -- --sync-supabase
 ```
 
+To save PSN refresh credentials for future server-side syncs:
+
+```bash
+npm run psn:sync -- --sync-supabase --save-tokens
+```
+
+After that, a server can sync without `PSN_NPSSO` by using the stored refresh token:
+
+```bash
+npm run psn:sync -- --sync-supabase --save-tokens --use-stored-tokens
+```
+
 By default PSN sync is lightweight: it fetches played games and trophy-title summaries, but skips individual trophy details. To fetch and write `psn_trophies` details too:
 
 ```bash
@@ -88,7 +100,7 @@ To write an existing export into Supabase without calling PSN again:
 npm run psn:sync -- --from-file exports/psn/latest-supabase-sync.json --sync-supabase
 ```
 
-By default the script does not store NPSSO or PSN auth tokens. Only use `--save-tokens` together with `--sync-supabase` if you intentionally want the server-side `psn_auth_tokens` table to store refresh credentials.
+By default the script does not store NPSSO or PSN auth tokens. Only use `--save-tokens` together with `--sync-supabase` if you intentionally want the server-side `psn_auth_tokens` table to store refresh credentials. The `/api/psn/sync` endpoint uses saved refresh credentials, and only needs `PSN_NPSSO` again if no token has been saved yet or the refresh token expires.
 
 `psn_title_links` stores the mapping between played-game title IDs and trophy-title IDs. Re-run a Supabase sync after adding the table to backfill automatic matches.
 

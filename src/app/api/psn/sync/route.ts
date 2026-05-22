@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { promisify } from 'node:util'
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
@@ -8,16 +10,7 @@ export const runtime = 'nodejs'
 
 const execFileAsync = promisify(execFile)
 
-export async function POST() {
-  if (!process.env.PSN_NPSSO) {
-    return NextResponse.json(
-      {
-        error: '服务器没有配置 PSN_NPSSO，暂时不能从页面直接同步。',
-      },
-      { status: 400 }
-    )
-  }
-
+export async function POST(request: Request) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json(
       {
@@ -28,12 +21,22 @@ export async function POST() {
   }
 
   try {
+    const payload = (await request.json().catch(() => ({}))) as { npsso?: string }
+    const npsso = payload.npsso?.trim()
+
     await execFileAsync(
       process.execPath,
-      ['scripts/psn-sync.mjs', '--sync-supabase', '--out', 'exports/psn/latest-supabase-sync.json'],
+      [
+        'scripts/psn-sync.mjs',
+        '--sync-supabase',
+        '--save-tokens',
+        '--use-stored-tokens',
+        '--out',
+        path.join(tmpdir(), 'latest-supabase-sync.json'),
+      ],
       {
         cwd: process.cwd(),
-        env: process.env,
+        env: npsso ? { ...process.env, PSN_NPSSO: npsso } : process.env,
         timeout: 180000,
         maxBuffer: 1024 * 1024 * 10,
       }
