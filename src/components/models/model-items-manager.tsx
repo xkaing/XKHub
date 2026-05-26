@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import Image from 'next/image'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw } from 'lucide-react'
 
 import { MetricCard } from '@/components/metric-card'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +95,13 @@ type FilterState = {
   faction: string[]
   characterName: string[]
 }
+
+type ProtectedAction =
+  | { type: 'create' }
+  | { type: 'edit'; item: ModelItem }
+
+const modelAccessKey = 'XKAI'
+const modelAccessSessionKey = 'xkhub:model-access-key'
 
 const emptyForm: ModelFormState = {
   name: '',
@@ -313,6 +320,10 @@ export function ModelItemsManager() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ModelItem | null>(null)
   const [previewItem, setPreviewItem] = useState<ModelItem | null>(null)
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false)
+  const [accessInput, setAccessInput] = useState('')
+  const [accessError, setAccessError] = useState<string | null>(null)
+  const [pendingProtectedAction, setPendingProtectedAction] = useState<ProtectedAction | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection } | null>(null)
   const [filters, setFilters] = useState<FilterState>({
     series: [],
@@ -442,6 +453,58 @@ export function ModelItemsManager() {
     setDialogOpen(true)
   }
 
+  const hasModelAccess = () => {
+    try {
+      return sessionStorage.getItem(modelAccessSessionKey) === modelAccessKey
+    } catch {
+      return false
+    }
+  }
+
+  const runProtectedAction = (action: ProtectedAction) => {
+    if (hasModelAccess()) {
+      if (action.type === 'create') openCreateDialog()
+      else openEditDialog(action.item)
+      return
+    }
+
+    setPendingProtectedAction(action)
+    setAccessInput('')
+    setAccessError(null)
+    setAccessDialogOpen(true)
+  }
+
+  const submitAccessKey = () => {
+    if (accessInput.trim() !== modelAccessKey) {
+      setAccessError('密钥不正确')
+      return
+    }
+
+    try {
+      sessionStorage.setItem(modelAccessSessionKey, modelAccessKey)
+    } catch {
+      // sessionStorage 不可用时仍允许本次已验证操作继续。
+    }
+
+    const action = pendingProtectedAction
+    setAccessDialogOpen(false)
+    setPendingProtectedAction(null)
+    setAccessInput('')
+    setAccessError(null)
+
+    if (action?.type === 'create') openCreateDialog()
+    if (action?.type === 'edit') openEditDialog(action.item)
+  }
+
+  const handleAccessDialogOpenChange = (open: boolean) => {
+    setAccessDialogOpen(open)
+    if (!open) {
+      setPendingProtectedAction(null)
+      setAccessInput('')
+      setAccessError(null)
+    }
+  }
+
   const uploadImage = async (file: File) => {
     setUploading(true)
     setError(null)
@@ -521,23 +584,6 @@ export function ModelItemsManager() {
     }
   }
 
-  const deleteItem = async (item: ModelItem) => {
-    const confirmed = window.confirm(`确定删除「${item.name}」吗？`)
-    if (!confirmed) return
-
-    setError(null)
-
-    try {
-      const supabase = createClient()
-      const { error: deleteError } = await supabase.from('model_items').delete().eq('id', item.id)
-      if (deleteError) throw deleteError
-      await fetchItems()
-    } catch (err) {
-      const message = getErrorMessage(err, '删除模型失败')
-      setError(message)
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -562,7 +608,7 @@ export function ModelItemsManager() {
               <RefreshCw className="mr-2 size-4" />
               刷新
             </Button>
-            <Button onClick={openCreateDialog}>
+            <Button onClick={() => runProtectedAction({ type: 'create' })}>
               <Plus className="mr-2 size-4" />
               新增模型
             </Button>
@@ -578,7 +624,7 @@ export function ModelItemsManager() {
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed text-center">
               <div className="text-base font-medium">还没有模型记录</div>
               <p className="mt-2 text-sm text-muted-foreground">先新增一条模型数据，之后所有展示和统计都会来自 Supabase。</p>
-              <Button className="mt-4" onClick={openCreateDialog}>
+              <Button className="mt-4" onClick={() => runProtectedAction({ type: 'create' })}>
                 <Plus className="mr-2 size-4" />
                 新增模型
               </Button>
@@ -714,11 +760,8 @@ export function ModelItemsManager() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="icon" onClick={() => openEditDialog(item)} title="编辑">
+                            <Button variant="outline" size="icon" onClick={() => runProtectedAction({ type: 'edit', item })} title="编辑">
                               <Edit className="size-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => deleteItem(item)} title="删除">
-                              <Trash2 className="size-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -854,6 +897,37 @@ export function ModelItemsManager() {
               {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               保存
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accessDialogOpen} onOpenChange={handleAccessDialogOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>请输入文本密钥</DialogTitle>
+            <DialogDescription>验证通过后，本标签页内可继续新增或编辑模型。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              id="model-access-key"
+              value={accessInput}
+              onChange={(event) => {
+                setAccessInput(event.target.value)
+                setAccessError(null)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') submitAccessKey()
+              }}
+              autoFocus
+              placeholder="请输入密钥"
+            />
+            {accessError ? <p className="text-sm text-destructive">{accessError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleAccessDialogOpenChange(false)}>
+              取消
+            </Button>
+            <Button onClick={submitAccessKey}>验证</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

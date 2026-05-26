@@ -27,6 +27,7 @@ export interface WarhammerForce {
   era: WarhammerEra
   period: string
   forceType: WarhammerForceType
+  legionNumber?: string
   name: string
   nameEn: string
   formerName?: string
@@ -43,8 +44,9 @@ export const warhammerForces: WarhammerForce[] = [
     era: '30K',
     period: '荷鲁斯之乱时期',
     forceType: '军团',
-    name: '影月苍狼 / 荷鲁斯之子',
-    nameEn: 'Luna Wolves / Sons of Horus',
+    legionNumber: '第十六军团',
+    name: '荷鲁斯之子',
+    nameEn: 'Sons of Horus',
     formerName: '影月苍狼',
     formerNameEn: 'Luna Wolves',
     laterName: '荷鲁斯之子',
@@ -295,6 +297,7 @@ export const warhammerForces: WarhammerForce[] = [
     era: '30K',
     period: '荷鲁斯之乱时期',
     forceType: '军团',
+    legionNumber: '第十九军团',
     name: '暗鸦守卫',
     nameEn: 'Raven Guard',
     summary:

@@ -5,6 +5,9 @@ export function getModelMetrics(items: ModelItem[]): Metric[] {
   const totalPaid = items.reduce((sum, item) => sum + (item.purchasePrice ?? 0), 0)
   const activePreorders = items.filter((item) => item.status === 'preorder').length
   const owned = items.filter((item) => item.status === 'owned').length
+  const gifted = items.filter((item) => item.status === 'gifted').length
+  const heresy = items.filter((item) => item.series === 'The Horus Heresy').length
+  const warhammer40k = items.filter((item) => item.series === 'Warhammer 40,000').length
 
   return [
     {
@@ -28,9 +31,19 @@ export function getModelMetrics(items: ModelItem[]): Metric[] {
       detail: '原价减实付',
     },
     {
-      label: '待跟进',
+      label: '待发货',
       value: `${activePreorders}`,
-      detail: `入库 ${owned} 件`,
+      detail: `入库${owned} 赠送${gifted}`,
+    },
+    {
+      label: '荷鲁斯之乱',
+      value: `${heresy}`,
+      detail: 'The Horus Heresy',
+    },
+    {
+      label: '战锤40K',
+      value: `${warhammer40k}`,
+      detail: 'Warhammer 40,000',
     },
   ]
 }
