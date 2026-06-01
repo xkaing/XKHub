@@ -1,4 +1,5 @@
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server'
+import { normalizeModelSeries } from '@/lib/data/models'
 import type { ModelItem } from '@/types'
 
 type ModelItemRow = {
@@ -45,7 +46,7 @@ function fromRow(row: ModelItemRow): ModelItem {
     brand: row.brand,
     ip: row.ip,
     universe: row.universe,
-    series: row.series,
+    series: normalizeModelSeries(row.series),
     faction: row.faction,
     characterName: row.character_name,
     imageUrl: row.image_url,

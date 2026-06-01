@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
-import { getModelMetrics, parseTags } from '@/lib/data/models'
+import { getModelMetrics, normalizeModelSeries, parseTags } from '@/lib/data/models'
 import { cn } from '@/lib/utils'
 import type { CurrencyCode, ModelItem, ModelItemStatus } from '@/types'
 
@@ -225,16 +225,7 @@ function formatFaction(value: string | null) {
 }
 
 function formatSeries(value: string | null) {
-  if (!value) return null
-
-  const seriesMap: Record<string, string> = {
-    'Warhammer 40K': 'Warhammer 40,000',
-    荷鲁斯之乱: 'The Horus Heresy',
-    星际战士2: 'Space Marine 2',
-    秘密关卡: 'Secret Level',
-  }
-
-  return seriesMap[value] ?? value
+  return normalizeModelSeries(value)
 }
 
 function fromRow(row: ModelItemRow): ModelItem {

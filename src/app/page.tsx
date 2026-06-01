@@ -2,18 +2,16 @@ import Link from 'next/link'
 import { ArrowRight, Bot, ChartNoAxesCombined, Database, Sparkles } from 'lucide-react'
 
 import { AppShell } from '@/components/app-shell'
-import { MetricCard } from '@/components/metric-card'
+import { HomeModelCharts } from '@/components/home/model-charts'
 import { PageHeader } from '@/components/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { getModelMetrics } from '@/lib/data/models'
 import { getModelItems } from '@/lib/data/models.server'
 import { dataModules } from '@/lib/data/modules'
 
 export default async function Home() {
   const items = await getModelItems()
-  const metrics = getModelMetrics(items)
 
   return (
     <AppShell>
@@ -24,11 +22,7 @@ export default async function Home() {
         description="先把数据长期沉淀到 Supabase，再从同一套数据里生成统计看板、AI 查询、年度报告和 H5 展示页。"
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} metric={metric} />
-        ))}
-      </div>
+      <HomeModelCharts items={items} />
 
       <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
         <Card>
