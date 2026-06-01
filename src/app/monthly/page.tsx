@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { CalendarDays, Gamepad2, PackageSearch, ReceiptText, Trophy } from 'lucide-react'
+import { Suspense } from 'react'
 
 import { AppShell } from '@/components/app-shell'
 import { MetricCard } from '@/components/metric-card'
@@ -22,14 +23,17 @@ import {
 
 type MonthlyGame = Awaited<ReturnType<typeof getGamesData>>['games'][number]
 
+type MonthlySearchParams = {
+  month?: string | string[]
+}
+
 type MonthlyPageProps = {
-  searchParams?: {
-    month?: string | string[]
-  }
+  searchParams?: Promise<MonthlySearchParams>
 }
 
 export default async function MonthlyPage({ searchParams }: MonthlyPageProps) {
-  const selectedMonth = normalizeMonthValue(searchParams?.month)
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  const selectedMonth = normalizeMonthValue(resolvedSearchParams?.month)
   const [modelItems, playedGames] = await Promise.all([getModelItems(), getMonthlyPlayedGames(selectedMonth)])
   const activity = getMonthlyActivity(modelItems, playedGames, selectedMonth)
 
@@ -66,7 +70,9 @@ export default async function MonthlyPage({ searchParams }: MonthlyPageProps) {
       />
 
       <div className="flex justify-end">
-        <MonthSelector value={activity.monthValue} currentMonth={getCurrentMonthValue()} />
+        <Suspense fallback={<div className="h-16 w-full max-w-sm rounded-lg border bg-card" />}>
+          <MonthSelector value={activity.monthValue} currentMonth={getCurrentMonthValue()} />
+        </Suspense>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

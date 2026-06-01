@@ -2,6 +2,7 @@
 
 import { CalendarDays, RotateCcw, Search } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import type React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,11 @@ export function MonthSelector({ value, currentMonth }: { value: string; currentM
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [selectedMonth, setSelectedMonth] = useState(value)
+
+  useEffect(() => {
+    setSelectedMonth(value)
+  }, [value])
 
   function updateMonth(nextValue: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -29,6 +35,7 @@ export function MonthSelector({ value, currentMonth }: { value: string; currentM
     const params = new URLSearchParams(searchParams.toString())
     params.delete('month')
     const query = params.toString()
+    setSelectedMonth(currentMonth)
     router.push(query ? `${pathname}?${query}` : pathname)
   }
 
@@ -38,11 +45,11 @@ export function MonthSelector({ value, currentMonth }: { value: string; currentM
         <CalendarDays className="size-4 text-primary" />
         月份
       </div>
-      <input type="hidden" name="month" value={value} />
-      <MonthPicker value={value} currentMonth={currentMonth} onChange={updateMonth} size="compact" />
+      <input type="hidden" name="month" value={selectedMonth} />
+      <MonthPicker value={selectedMonth} currentMonth={currentMonth} onChange={setSelectedMonth} size="compact" />
       <Button type="submit" variant="secondary" size="sm" className="gap-1.5">
         <Search className="size-4" />
-        查看
+        应用
       </Button>
       <Button
         type="button"
@@ -50,7 +57,7 @@ export function MonthSelector({ value, currentMonth }: { value: string; currentM
         size="sm"
         className="gap-1.5"
         onClick={resetMonth}
-        disabled={value === currentMonth && !searchParams.has('month')}
+        disabled={selectedMonth === currentMonth && !searchParams.has('month')}
       >
         <RotateCcw className="size-4" />
         本月

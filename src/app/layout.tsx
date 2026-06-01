@@ -1,5 +1,10 @@
 import type { Metadata } from 'next'
+import { Oxanium } from 'next/font/google'
+
+import { cn } from '@/lib/utils'
 import './globals.css'
+
+const oxanium = Oxanium({ subsets: ['latin'], variable: '--font-oxanium' })
 
 export const metadata: Metadata = {
   title: 'XKHub',
@@ -24,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="zh-CN" suppressHydrationWarning className={cn('font-sans', oxanium.variable)}>
       <body>
         {/* 在 React 水合前写入主题类，避免深色模式首屏闪烁。 */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useState } from 'react'
 import type React from 'react'
 import Image from 'next/image'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw } from 'lucide-react'
@@ -23,6 +23,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -39,6 +42,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
 import { getModelMetrics, parseTags } from '@/lib/data/models'
+import { cn } from '@/lib/utils'
 import type { CurrencyCode, ModelItem, ModelItemStatus } from '@/types'
 
 type ModelItemRow = {
@@ -361,7 +365,7 @@ export function ModelItemsManager() {
     if (!sort) return filteredItems
 
     return [...filteredItems].sort((first, second) => {
-      let result = 0
+      let result: number
 
       if (sort.key === 'price') {
         const firstPrice = first.purchasePrice
@@ -815,17 +819,11 @@ export function ModelItemsManager() {
               />
             </Field>
             <Field label="状态">
-              <select
+              <OptionSelect
                 value={form.status}
-                onChange={(event) => updateForm('status', event.target.value as ModelItemStatus)}
-                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => updateForm('status', value as ModelItemStatus)}
+                options={statusOptions}
+              />
             </Field>
             <Field label="购买日期">
               <DatePicker value={form.purchaseDate} onChange={(value) => updateForm('purchaseDate', value)} />
@@ -1046,23 +1044,83 @@ function Select({
   value,
   onChange,
   options,
+  placeholder,
 }: {
   value: string
   onChange: (value: string) => void
   options: string[]
+  placeholder?: string
 }) {
   return (
-    <select
+    <OptionSelect
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      onChange={onChange}
+      options={options.map((option) => ({ value: option, label: option }))}
+      placeholder={placeholder}
+    />
+  )
+}
+
+type SelectOption = {
+  value: string
+  label: string
+}
+
+function SelectTrigger({
+  label,
+  isPlaceholder,
+  className,
+  ...props
+}: {
+  label: string
+  isPlaceholder?: boolean
+} & React.ComponentProps<typeof Button>, ref: React.ForwardedRef<HTMLButtonElement>) {
+  return (
+    <Button
+      ref={ref}
+      type="button"
+      variant="outline"
+      className={cn('w-full justify-between px-3 font-normal', className)}
+      {...props}
     >
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
+      <span className={cn('truncate', isPlaceholder && 'text-muted-foreground')}>{label}</span>
+      <ChevronDown className="ml-2 size-4 shrink-0 text-muted-foreground" />
+    </Button>
+  )
+}
+
+const SelectTriggerButton = forwardRef(SelectTrigger)
+SelectTriggerButton.displayName = 'SelectTriggerButton'
+
+function OptionSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: SelectOption[]
+  placeholder?: string
+}) {
+  const selectedOption = options.find((option) => option.value === value)
+  const displayText = selectedOption?.label ?? placeholder ?? '请选择'
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SelectTriggerButton label={displayText} isPlaceholder={!selectedOption} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -1077,23 +1135,31 @@ function GroupedSelect({
   groups: Array<{ label: string; options: string[] }>
   placeholder?: string
 }) {
+  const selectedGroup = groups.find((group) => group.options.includes(value))
+  const displayText = value || placeholder || '请选择'
+
   return (
-    <select
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <option value="">{placeholder ?? '请选择'}</option>
-      {groups.map((group) => (
-        <optgroup key={group.label} label={group.label}>
-          {group.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SelectTriggerButton label={displayText} isPlaceholder={!selectedGroup} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          <DropdownMenuRadioItem value="">{placeholder ?? '请选择'}</DropdownMenuRadioItem>
+          {groups.map((group) => (
+            <div key={group.label}>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+              {group.options.map((option) => (
+                <DropdownMenuRadioItem key={option} value={option}>
+                  {option}
+                </DropdownMenuRadioItem>
+              ))}
+            </div>
           ))}
-        </optgroup>
-      ))}
-    </select>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -1108,18 +1174,17 @@ function OptionalSelect({
   options: string[]
   placeholder?: string
 }) {
+  const optionsWithPlaceholder = [
+    { value: '', label: placeholder ?? '不选择' },
+    ...options.map((option) => ({ value: option, label: option })),
+  ]
+
   return (
-    <select
+    <OptionSelect
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <option value="">{placeholder ?? '不选择'}</option>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={optionsWithPlaceholder}
+      placeholder={placeholder}
+    />
   )
 }

@@ -15,7 +15,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PackageSearch,
-  Shield,
   Sun,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -28,7 +27,6 @@ const navItems = [
   { href: '/', label: '总览', icon: LayoutDashboard },
   { href: '/monthly', label: '本月动态', icon: CalendarDays },
   { href: '/models', label: '模型收藏', icon: PackageSearch },
-  { href: '/warhammer-characters', label: '战锤人物', icon: Shield },
   { href: '/games', label: '游戏与奖杯', icon: Gamepad2 },
   { href: '/insights', label: '统计分析', icon: ChartNoAxesCombined },
   { href: '/ai', label: 'AI 工作台', icon: Bot },
