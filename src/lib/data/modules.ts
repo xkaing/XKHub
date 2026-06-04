@@ -23,6 +23,13 @@ export const dataModules: DataModule[] = [
     records: 'schema draft',
   },
   {
+    title: 'PS 游戏清单',
+    description: '记录已买和想买的 PS 游戏、封面、发售日、开发商与发行商。',
+    href: '/ps-games',
+    status: 'ready',
+    records: 'Supabase CRUD',
+  },
+  {
     title: 'PSN 奖杯',
     description: '奖杯完成率、白金记录、稀有度、系列进度。',
     href: '/games',

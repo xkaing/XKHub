@@ -7,6 +7,9 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  outputFileTracingIncludes: {
+    '/api/psn/sync': ['./scripts/psn-sync.mjs'],
+  },
   images: {
     dangerouslyAllowLocalIP: true,
     remotePatterns: [

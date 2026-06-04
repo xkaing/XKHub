@@ -27,6 +27,30 @@ export interface ModelItem {
 
 export type ModelItemStatus = 'preorder' | 'owned' | 'gifted'
 
+export type PsGameStatus = 'owned' | 'wishlist'
+
+export interface PsGameItem {
+  id: string
+  gameId: string | null
+  title: string
+  coverUrl: string | null
+  releaseDate: string | null
+  developer: string | null
+  publisher: string | null
+  platform: string | null
+  status: PsGameStatus
+  purchaseDate: string | null
+  purchasePrice: number | null
+  currency: CurrencyCode
+  store: string | null
+  orderNo: string | null
+  edition: string | null
+  format: string | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Metric {
   label: string
   value: string

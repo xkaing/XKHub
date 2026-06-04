@@ -1,5 +1,15 @@
 create extension if not exists pgcrypto;
 
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 create table if not exists public.psn_accounts (
   id uuid primary key default gen_random_uuid(),
   account_id text not null unique,
@@ -117,6 +127,14 @@ create table if not exists public.psn_trophies (
 create table if not exists public.game_purchases (
   id uuid primary key default gen_random_uuid(),
   game_id uuid references public.games(id) on delete set null,
+  title text,
+  cover_url text,
+  release_date date,
+  developer text,
+  publisher text,
+  platform text,
+  status text not null default 'owned'
+    check (status in ('owned', 'wishlist')),
   purchase_date date,
   purchase_price numeric(12, 2),
   currency text not null default 'CNY',
@@ -128,6 +146,16 @@ create table if not exists public.game_purchases (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists game_purchases_status_idx on public.game_purchases (status);
+create index if not exists game_purchases_release_date_idx on public.game_purchases (release_date desc);
+create index if not exists game_purchases_purchase_date_idx on public.game_purchases (purchase_date desc);
+
+drop trigger if exists set_game_purchases_updated_at on public.game_purchases;
+create trigger set_game_purchases_updated_at
+before update on public.game_purchases
+for each row
+execute function public.set_updated_at();
 
 alter table public.psn_accounts enable row level security;
 alter table public.psn_auth_tokens enable row level security;
@@ -144,7 +172,7 @@ grant select on public.psn_game_progress to authenticated;
 grant select on public.psn_trophy_titles to authenticated;
 grant select on public.psn_title_links to authenticated;
 grant select on public.psn_trophies to authenticated;
-grant select, insert, update, delete on public.game_purchases to authenticated;
+grant select, insert, update, delete on public.game_purchases to anon, authenticated;
 
 create policy "authenticated can read psn accounts"
 on public.psn_accounts for select
@@ -179,5 +207,11 @@ using (true);
 create policy "authenticated can manage game purchases"
 on public.game_purchases for all
 to authenticated
+using (true)
+with check (true);
+
+create policy "anon can manage game purchases"
+on public.game_purchases for all
+to anon
 using (true)
 with check (true);

@@ -771,7 +771,7 @@ export function ModelItemsManager() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingItem ? '编辑模型' : '新增模型'}</DialogTitle>
             <DialogDescription>保存后会写入 Supabase `model_items` 表。图片会先上传到 Storage。</DialogDescription>
@@ -922,7 +922,7 @@ export function ModelItemsManager() {
       </Dialog>
 
       <Dialog open={Boolean(previewItem)} onOpenChange={(open) => (!open ? setPreviewItem(null) : null)}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{previewItem?.name ?? '图片预览'}</DialogTitle>
           </DialogHeader>

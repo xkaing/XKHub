@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+export const maxDuration = 180
 
 const execFileAsync = promisify(execFile)
 
