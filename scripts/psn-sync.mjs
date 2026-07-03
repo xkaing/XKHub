@@ -317,6 +317,7 @@ function mergeTrophyLists(titleTrophies, earnedTrophies) {
 
 async function syncSupabase(payload, authorization, now) {
   const supabase = createSupabaseServiceClient();
+  const snapshotDate = args["save-monthly-snapshot"] ? resolveSnapshotDate(now) : null;
 
   const accountId = payload.account.accountId;
   const avatarUrl = payload.account.profile?.avatars?.find((avatar) => avatar.size === "xl")?.url
@@ -363,7 +364,7 @@ async function syncSupabase(payload, authorization, now) {
 
   const { data: games, error: gameLookupError } = await supabase
     .from("games")
-    .select("id, psn_title_id, psn_concept_id, title, localized_title, psn_concept_name")
+    .select("id, psn_title_id, psn_concept_id, title, localized_title, psn_concept_name, category, cover_url")
     .in("psn_title_id", payload.playedGames.map((game) => game.titleId));
   if (gameLookupError) throw gameLookupError;
 
@@ -507,6 +508,20 @@ async function syncSupabase(payload, authorization, now) {
     if (error) throw error;
   }
 
+  if (snapshotDate) {
+    await saveMonthlySnapshot({
+      supabase,
+      account,
+      payload,
+      now,
+      snapshotDate,
+      trophyTitleRows,
+      progressRows,
+      gameById,
+    });
+    console.log(`Saved PSN monthly snapshot for ${snapshotDate}.`);
+  }
+
   if (args["save-tokens"]) {
     if (!authorization) {
       throw new Error("--save-tokens requires a fresh PSN auth run, not --from-file.");
@@ -527,6 +542,81 @@ async function syncSupabase(payload, authorization, now) {
       },
       { onConflict: "psn_account_id" }
     );
+    if (error) throw error;
+  }
+}
+
+async function saveMonthlySnapshot({
+  supabase,
+  account,
+  payload,
+  now,
+  snapshotDate,
+  trophyTitleRows,
+  progressRows,
+  gameById,
+}) {
+  const totalPlaySeconds = progressRows.reduce(
+    (total, progress) => total + (progress.play_duration_seconds ?? 0),
+    0
+  );
+
+  const { data: snapshot, error: snapshotError } = await supabase
+    .from("psn_monthly_snapshots")
+    .upsert(
+      {
+        psn_account_id: account.id,
+        snapshot_date: snapshotDate,
+        captured_at: now.toISOString(),
+        online_id: payload.account.profile?.onlineId ?? null,
+        trophy_summary: payload.account.trophySummary ?? {},
+        total_play_seconds: totalPlaySeconds,
+        total_earned_trophies: payload.account.trophySummary?.earnedTrophies ?? {},
+        raw_account: payload.account ?? {},
+      },
+      { onConflict: "psn_account_id,snapshot_date" }
+    )
+    .select("id")
+    .single();
+
+  if (snapshotError) throw snapshotError;
+
+  const progressByGameId = new Map(progressRows.map((progress) => [progress.game_id, progress]));
+  const snapshotGameRows = trophyTitleRows.map((title) => {
+    const progress = title.game_id ? progressByGameId.get(title.game_id) : null;
+    const game = title.game_id ? gameById.get(title.game_id) : null;
+
+    return {
+      snapshot_id: snapshot.id,
+      psn_account_id: account.id,
+      game_id: title.game_id,
+      np_communication_id: title.np_communication_id,
+      title: title.name,
+      platform: title.platform,
+      category: game?.category ?? null,
+      cover_url: title.icon_url ?? game?.cover_url ?? null,
+      play_count: progress?.play_count ?? null,
+      play_duration_seconds: progress?.play_duration_seconds ?? null,
+      last_played_at: progress?.last_played_at ?? null,
+      trophy_progress: title.progress,
+      earned_trophies: title.earned_trophies ?? {},
+      defined_trophies: title.defined_trophies ?? {},
+      last_updated_at: title.last_updated_at,
+      raw_trophy_title: title.raw_psn ?? {},
+      raw_game_progress: progress?.raw_psn ?? {},
+    };
+  });
+
+  const { error: deleteSnapshotGamesError } = await supabase
+    .from("psn_monthly_snapshot_games")
+    .delete()
+    .eq("snapshot_id", snapshot.id);
+  if (deleteSnapshotGamesError) throw deleteSnapshotGamesError;
+
+  if (snapshotGameRows.length > 0) {
+    const { error } = await supabase
+      .from("psn_monthly_snapshot_games")
+      .upsert(snapshotGameRows, { onConflict: "snapshot_id,np_communication_id" });
     if (error) throw error;
   }
 }
@@ -792,6 +882,23 @@ function numberArg(name) {
 function defaultOutputPath(now) {
   const stamp = now.toISOString().replace(/[:.]/g, "-");
   return path.join("exports", "psn", `psn-sync-${stamp}.json`);
+}
+
+function resolveSnapshotDate(now) {
+  const explicitDate = args["snapshot-date"];
+  if (explicitDate !== undefined && explicitDate !== true) {
+    const value = String(explicitDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new Error("--snapshot-date must use YYYY-MM-DD.");
+    }
+    return value;
+  }
+
+  const shanghaiTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const year = shanghaiTime.getUTCFullYear();
+  const month = String(shanghaiTime.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(shanghaiTime.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function loadEnvLocal() {

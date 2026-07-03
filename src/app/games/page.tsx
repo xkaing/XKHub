@@ -1,9 +1,10 @@
 import { AppShell } from '@/components/app-shell'
 import { GamesTable } from '@/components/games/games-table'
 import { PsnAccountOverview } from '@/components/games/psn-account-overview'
+import { PsnSnapshotButton } from '@/components/games/psn-snapshot-button'
 import { PsnSyncButton } from '@/components/games/psn-sync-button'
 import { PageHeader } from '@/components/page-header'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getGamesData } from '@/lib/data/games.server'
 
 export default async function GamesPage() {
@@ -21,14 +22,17 @@ export default async function GamesPage() {
       <PsnAccountOverview summary={summary} />
 
       <Card>
-        <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div>
-            <CardTitle>游戏列表</CardTitle>
-            <CardDescription className="mt-1">
-              按奖杯最近更新时间排序。{formatSyncedAt(summary.lastSyncedAt)}
-            </CardDescription>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <CardTitle>游戏列表</CardTitle>
+              <span className="text-sm text-muted-foreground">{formatSyncedAt(summary.lastSyncedAt)}</span>
+            </div>
+            <div className="flex flex-wrap items-start gap-2 md:justify-end">
+              <PsnSyncButton />
+              <PsnSnapshotButton lastSyncedAt={summary.lastSyncedAt} />
+            </div>
           </div>
-          <PsnSyncButton />
         </CardHeader>
         <CardContent>
           {games.length > 0 ? <GamesTable games={games} /> : <EmptyState />}
@@ -47,9 +51,10 @@ function EmptyState() {
 }
 
 function formatSyncedAt(value: string | null) {
-  if (!value) return '暂无同步时间。'
+  if (!value) return '暂无同步时间'
 
   const formatted = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -57,5 +62,5 @@ function formatSyncedAt(value: string | null) {
     minute: '2-digit',
   }).format(new Date(value))
 
-  return `本次数据同步于 ${formatted}。`
+  return `本次数据同步于 ${formatted}`
 }

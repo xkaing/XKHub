@@ -30,6 +30,42 @@ export interface GamesData {
   summary: GameListSummary
 }
 
+export interface MonthlyPsnSnapshotActivity {
+  monthValue: string
+  startSnapshot: PsnSnapshotSummary | null
+  endSnapshot: PsnSnapshotSummary | null
+  games: MonthlyPsnGameDelta[]
+  totalPlaySeconds: number
+  earnedTrophies: Required<TrophyCounts>
+  totalEarnedTrophies: number
+  platinumTrophies: number
+}
+
+export interface MonthlyPsnGameDelta {
+  id: string
+  title: string
+  platform: string | null
+  category: string | null
+  coverUrl: string | null
+  playCountDelta: number
+  playDurationSecondsDelta: number
+  trophyProgress: number | null
+  earnedTrophiesDelta: Required<TrophyCounts>
+  totalEarnedTrophiesDelta: number
+  platinumTrophiesDelta: number
+  lastPlayedAt: string | null
+  lastUpdatedAt: string | null
+}
+
+export interface PsnSnapshotSummary {
+  id: string
+  snapshotDate: string
+  capturedAt: string
+  onlineId: string | null
+  totalPlaySeconds: number
+  totalEarnedTrophies: TrophyCounts | null
+}
+
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
 type TrophyCounts = {
@@ -93,6 +129,32 @@ export type TrophySummary = {
   earnedTrophies?: TrophyCounts
   trophyLevelBasePoint?: number
   trophyLevelNextPoint?: number
+}
+
+type MonthlySnapshotRow = {
+  id: string
+  snapshot_date: string
+  captured_at: string
+  online_id: string | null
+  total_play_seconds: number | null
+  total_earned_trophies: TrophyCounts | null
+}
+
+type MonthlySnapshotGameRow = {
+  snapshot_id: string
+  game_id: string | null
+  np_communication_id: string
+  title: string
+  platform: string | null
+  category: string | null
+  cover_url: string | null
+  play_count: number | null
+  play_duration_seconds: number | null
+  last_played_at: string | null
+  trophy_progress: number | null
+  earned_trophies: TrophyCounts | null
+  defined_trophies: TrophyCounts | null
+  last_updated_at: string | null
 }
 
 export type PsnAccountSummary = {
@@ -165,13 +227,17 @@ export async function getGamesData(): Promise<GamesData> {
     const gameById = new Map(gameRows.map((game) => [game.id, game]))
     const gameByTitle = buildGameTitleMap(gameRows)
     const progressByGameId = new Map(progressRows.map((progress) => [progress.game_id, progress]))
-    const linkByCommunicationId = new Map(titleLinkRows.map((link) => [link.np_communication_id, link]))
+    const verifiedLinkByCommunicationId = new Map(
+      titleLinkRows
+        .filter((link) => link.verified)
+        .map((link) => [link.np_communication_id, link])
+    )
 
     const games = trophyRows
       .map((trophyTitle) => {
-        const titleLink = linkByCommunicationId.get(trophyTitle.np_communication_id)
-        const game = titleLink
-          ? gameById.get(titleLink.game_id) ?? null
+        const verifiedLink = verifiedLinkByCommunicationId.get(trophyTitle.np_communication_id)
+        const game = verifiedLink
+          ? gameById.get(verifiedLink.game_id) ?? null
           : findGameForTrophyTitle(trophyTitle, gameById, gameByTitle, progressByGameId)
         if (game?.category && excludedCategories.has(game.category)) return null
         if (game && excludedTitles.has(normalizeTitle(game.title))) return null
@@ -310,6 +376,127 @@ export async function getMonthlyPlayedGames(monthValue: string): Promise<GameLis
   }
 }
 
+export async function getMonthlyPsnSnapshotActivity(monthValue: string): Promise<MonthlyPsnSnapshotActivity> {
+  const month = parseMonthValue(monthValue)
+  if (!month || !hasSupabaseEnv) return emptyMonthlyPsnSnapshotActivity(monthValue)
+
+  const normalizedMonthValue = formatMonthValue(month.year, month.monthIndex)
+  const startDate = formatSnapshotDate(month.year, month.monthIndex)
+  const endDate = formatSnapshotDate(month.year, month.monthIndex + 1)
+
+  try {
+    const supabase = await getReadableClient()
+    const { data: snapshotData, error: snapshotError } = await supabase
+      .from('psn_monthly_snapshots')
+      .select('id, snapshot_date, captured_at, online_id, total_play_seconds, total_earned_trophies')
+      .in('snapshot_date', [startDate, endDate])
+      .order('captured_at', { ascending: false })
+
+    if (snapshotError) return emptyMonthlyPsnSnapshotActivity(normalizedMonthValue)
+
+    const snapshotsByDate = new Map<string, MonthlySnapshotRow>()
+    for (const snapshot of (snapshotData ?? []) as MonthlySnapshotRow[]) {
+      if (!snapshotsByDate.has(snapshot.snapshot_date)) {
+        snapshotsByDate.set(snapshot.snapshot_date, snapshot)
+      }
+    }
+
+    const startSnapshot = snapshotsByDate.get(startDate) ?? null
+    const endSnapshot = snapshotsByDate.get(endDate) ?? null
+
+    if (!startSnapshot || !endSnapshot) {
+      return {
+        ...emptyMonthlyPsnSnapshotActivity(normalizedMonthValue),
+        startSnapshot: startSnapshot ? toSnapshotSummary(startSnapshot) : null,
+        endSnapshot: endSnapshot ? toSnapshotSummary(endSnapshot) : null,
+      }
+    }
+
+    const { data: gameData, error: gameError } = await supabase
+      .from('psn_monthly_snapshot_games')
+      .select(
+        'snapshot_id, game_id, np_communication_id, title, platform, category, cover_url, play_count, play_duration_seconds, last_played_at, trophy_progress, earned_trophies, defined_trophies, last_updated_at'
+      )
+      .in('snapshot_id', [startSnapshot.id, endSnapshot.id])
+
+    if (gameError) {
+      return {
+        ...emptyMonthlyPsnSnapshotActivity(normalizedMonthValue),
+        startSnapshot: toSnapshotSummary(startSnapshot),
+        endSnapshot: toSnapshotSummary(endSnapshot),
+      }
+    }
+
+    const rows = (gameData ?? []) as MonthlySnapshotGameRow[]
+    const startRows = new Map(
+      rows
+        .filter((row) => row.snapshot_id === startSnapshot.id)
+        .map((row) => [row.np_communication_id, row])
+    )
+
+    const games = rows
+      .filter((row) => row.snapshot_id === endSnapshot.id)
+      .map((endRow) => {
+        if (endRow.category && excludedCategories.has(endRow.category)) return null
+        if (excludedTitles.has(normalizeTitle(endRow.title))) return null
+
+        const startRow = startRows.get(endRow.np_communication_id)
+        const earnedTrophiesDelta = diffTrophyCounts(endRow.earned_trophies, startRow?.earned_trophies)
+        const totalEarnedTrophiesDelta = countTrophies(earnedTrophiesDelta)
+        const playDurationSecondsDelta = diffNumber(endRow.play_duration_seconds, startRow?.play_duration_seconds)
+        const playCountDelta = diffNumber(endRow.play_count, startRow?.play_count)
+
+        if (playDurationSecondsDelta === 0 && playCountDelta === 0 && totalEarnedTrophiesDelta === 0) {
+          return null
+        }
+
+        return {
+          id: endRow.np_communication_id,
+          title: endRow.title,
+          platform: endRow.platform,
+          category: endRow.category,
+          coverUrl: endRow.cover_url,
+          playCountDelta,
+          playDurationSecondsDelta,
+          trophyProgress: endRow.trophy_progress,
+          earnedTrophiesDelta,
+          totalEarnedTrophiesDelta,
+          platinumTrophiesDelta: earnedTrophiesDelta.platinum,
+          lastPlayedAt: endRow.last_played_at,
+          lastUpdatedAt: endRow.last_updated_at,
+        }
+      })
+      .filter((game): game is MonthlyPsnGameDelta => Boolean(game))
+      .sort((a, b) => {
+        if (a.playDurationSecondsDelta !== b.playDurationSecondsDelta) {
+          return b.playDurationSecondsDelta - a.playDurationSecondsDelta
+        }
+        if (a.totalEarnedTrophiesDelta !== b.totalEarnedTrophiesDelta) {
+          return b.totalEarnedTrophiesDelta - a.totalEarnedTrophiesDelta
+        }
+        return Date.parse(b.lastPlayedAt ?? '') - Date.parse(a.lastPlayedAt ?? '')
+      })
+
+    const earnedTrophies = games.reduce<Required<TrophyCounts>>(
+      (total, game) => addTrophyCounts(total, game.earnedTrophiesDelta),
+      emptyTrophyCounts()
+    )
+
+    return {
+      monthValue: normalizedMonthValue,
+      startSnapshot: toSnapshotSummary(startSnapshot),
+      endSnapshot: toSnapshotSummary(endSnapshot),
+      games,
+      totalPlaySeconds: games.reduce((total, game) => total + game.playDurationSecondsDelta, 0),
+      earnedTrophies,
+      totalEarnedTrophies: countTrophies(earnedTrophies),
+      platinumTrophies: earnedTrophies.platinum,
+    }
+  } catch {
+    return emptyMonthlyPsnSnapshotActivity(normalizedMonthValue)
+  }
+}
+
 async function getTrophyRowsByCommunicationId(supabase: SupabaseClient, communicationIds: string[]) {
   const { data, error } = await supabase
     .from('psn_trophy_titles')
@@ -396,12 +583,15 @@ function findGameForTrophyTitle(
   gameByTitle: Map<string, GameRow[]>,
   progressByGameId: Map<string, ProgressRow>
 ) {
-  if (trophyTitle.game_id) {
-    const game = gameById.get(trophyTitle.game_id)
-    if (game) return game
+  const candidatesById = new Map<string, GameRow>()
+  const linkedGame = trophyTitle.game_id ? gameById.get(trophyTitle.game_id) ?? null : null
+  if (linkedGame) candidatesById.set(linkedGame.id, linkedGame)
+
+  for (const candidate of gameByTitle.get(normalizeTitle(trophyTitle.name)) ?? []) {
+    candidatesById.set(candidate.id, candidate)
   }
 
-  const candidates = gameByTitle.get(normalizeTitle(trophyTitle.name)) ?? []
+  const candidates = Array.from(candidatesById.values())
   if (candidates.length <= 1) return candidates[0] ?? null
 
   const trophyTime = Date.parse(trophyTitle.last_updated_at ?? '')
@@ -456,8 +646,65 @@ function parseMonthValue(value: string | null | undefined) {
   }
 }
 
+function formatMonthValue(year: number, monthIndex: number) {
+  const date = new Date(Date.UTC(year, monthIndex, 1))
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function formatSnapshotDate(year: number, monthIndex: number) {
+  const date = new Date(Date.UTC(year, monthIndex, 1))
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`
+}
+
 function fromShanghaiDate(year: number, month: number, day: number) {
   return new Date(Date.UTC(year, month, day) - shanghaiOffsetMs)
+}
+
+function toSnapshotSummary(row: MonthlySnapshotRow): PsnSnapshotSummary {
+  return {
+    id: row.id,
+    snapshotDate: row.snapshot_date,
+    capturedAt: row.captured_at,
+    onlineId: row.online_id,
+    totalPlaySeconds: row.total_play_seconds ?? 0,
+    totalEarnedTrophies: row.total_earned_trophies,
+  }
+}
+
+function diffNumber(endValue: number | null | undefined, startValue: number | null | undefined) {
+  return Math.max(0, (endValue ?? 0) - (startValue ?? 0))
+}
+
+function diffTrophyCounts(endCounts: TrophyCounts | null | undefined, startCounts: TrophyCounts | null | undefined) {
+  return {
+    bronze: diffNumber(endCounts?.bronze, startCounts?.bronze),
+    silver: diffNumber(endCounts?.silver, startCounts?.silver),
+    gold: diffNumber(endCounts?.gold, startCounts?.gold),
+    platinum: diffNumber(endCounts?.platinum, startCounts?.platinum),
+  }
+}
+
+function addTrophyCounts(first: Required<TrophyCounts>, second: Required<TrophyCounts>) {
+  return {
+    bronze: first.bronze + second.bronze,
+    silver: first.silver + second.silver,
+    gold: first.gold + second.gold,
+    platinum: first.platinum + second.platinum,
+  }
+}
+
+function countTrophies(counts: TrophyCounts | null | undefined) {
+  if (!counts) return 0
+  return (counts.bronze ?? 0) + (counts.silver ?? 0) + (counts.gold ?? 0) + (counts.platinum ?? 0)
+}
+
+function emptyTrophyCounts(): Required<TrophyCounts> {
+  return {
+    bronze: 0,
+    silver: 0,
+    gold: 0,
+    platinum: 0,
+  }
 }
 
 function normalizeTitle(value: string) {
@@ -489,5 +736,18 @@ function emptyGamesData(): GamesData {
       lastSyncedAt: null,
       account: null,
     },
+  }
+}
+
+function emptyMonthlyPsnSnapshotActivity(monthValue: string): MonthlyPsnSnapshotActivity {
+  return {
+    monthValue,
+    startSnapshot: null,
+    endSnapshot: null,
+    games: [],
+    totalPlaySeconds: 0,
+    earnedTrophies: emptyTrophyCounts(),
+    totalEarnedTrophies: 0,
+    platinumTrophies: 0,
   }
 }

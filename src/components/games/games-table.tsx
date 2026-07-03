@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronsUpDown, ChevronLeft, ChevronRight, Trophy } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,13 +17,18 @@ import {
 import type { GameListItem } from '@/lib/data/games.server'
 
 const pageSizeOptions = [20, 40, 80, 120, 'all'] as const
-type SortMode = 'recent' | 'playtime_desc' | 'playtime_asc'
+type SortField = 'recent' | 'playtime'
+type SortDirection = 'asc' | 'desc'
+type SortState = {
+  field: SortField
+  direction: SortDirection
+}
 
 export function GamesTable({ games }: { games: GameListItem[] }) {
   const [pageSize, setPageSize] = useState<number | 'all'>('all')
   const [page, setPage] = useState(1)
-  const [sortMode, setSortMode] = useState<SortMode>('recent')
-  const sortedGames = useMemo(() => sortGames(games, sortMode), [games, sortMode])
+  const [sortState, setSortState] = useState<SortState>({ field: 'recent', direction: 'desc' })
+  const sortedGames = useMemo(() => sortGames(games, sortState), [games, sortState])
   const effectivePageSize = pageSize === 'all' ? Math.max(games.length, 1) : pageSize
   const totalPages = Math.max(1, Math.ceil(sortedGames.length / effectivePageSize))
   const currentPage = Math.min(page, totalPages)
@@ -36,53 +41,39 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
     setPage(1)
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          显示 {sortedGames.length === 0 ? 0 : start + 1}-{end} / {sortedGames.length}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            排序
-            <select
-              value={sortMode}
-              onChange={(event) => {
-                setSortMode(event.target.value as SortMode)
-                setPage(1)
-              }}
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
-            >
-              <option value="recent">最近更新</option>
-              <option value="playtime_desc">时长从高到低</option>
-              <option value="playtime_asc">时长从低到高</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            每页
-            <select
-              value={pageSize}
-              onChange={(event) => changePageSize(event.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
-            >
-              {pageSizeOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option === 'all' ? '全部' : option}
-                </option>
-              ))}
-            </select>
-            条
-          </label>
-        </div>
-      </div>
+  function toggleSort(field: SortField) {
+    setSortState((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'desc' ? 'asc' : 'desc',
+    }))
+    setPage(1)
+  }
 
+  return (
+    <div className="flex flex-col gap-4">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[44%]">游戏</TableHead>
-            <TableHead>时长</TableHead>
+            <TableHead>
+              <SortableHeader
+                active={sortState.field === 'playtime'}
+                direction={sortState.direction}
+                onClick={() => toggleSort('playtime')}
+              >
+                时长
+              </SortableHeader>
+            </TableHead>
             <TableHead>奖杯</TableHead>
-            <TableHead>最近更新</TableHead>
+            <TableHead>
+              <SortableHeader
+                active={sortState.field === 'recent'}
+                direction={sortState.direction}
+                onClick={() => toggleSort('recent')}
+              >
+                最近更新
+              </SortableHeader>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -117,11 +108,29 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
         </TableBody>
       </Table>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          第 {currentPage} / {totalPages} 页
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted-foreground">
+          <span>
+            显示 {sortedGames.length === 0 ? 0 : start + 1}-{end} / {sortedGames.length}
+          </span>
+          <label className="flex items-center gap-2">
+            每页
+            <select
+              value={pageSize}
+              onChange={(event) => changePageSize(event.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
+            >
+              {pageSizeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === 'all' ? '全部' : option}
+                </option>
+              ))}
+            </select>
+            条
+          </label>
+          <span>第 {currentPage} / {totalPages} 页</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
@@ -148,34 +157,76 @@ export function GamesTable({ games }: { games: GameListItem[] }) {
   )
 }
 
-function sortGames(games: GameListItem[], sortMode: SortMode) {
+function SortableHeader({
+  active,
+  direction,
+  onClick,
+  children,
+}: {
+  active: boolean
+  direction: SortDirection
+  onClick: () => void
+  children: ReactNode
+}) {
+  const Icon = active ? (direction === 'desc' ? ArrowDown : ArrowUp) : ChevronsUpDown
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase transition-colors hover:text-foreground"
+      aria-sort={active ? (direction === 'desc' ? 'descending' : 'ascending') : 'none'}
+    >
+      {children}
+      <Icon className="size-3.5" aria-hidden="true" />
+    </button>
+  )
+}
+
+function sortGames(games: GameListItem[], sortState: SortState) {
   return games.slice().sort((a, b) => {
-    if (sortMode === 'playtime_desc') {
-      return comparePlaySeconds(a, b, 'desc')
+    if (sortState.field === 'playtime') {
+      return comparePlaySeconds(a, b, sortState.direction)
     }
 
-    if (sortMode === 'playtime_asc') {
-      return comparePlaySeconds(a, b, 'asc')
-    }
-
-    return compareRecent(a, b)
+    return compareRecent(a, b, sortState.direction)
   })
 }
 
 function comparePlaySeconds(a: GameListItem, b: GameListItem, direction: 'asc' | 'desc') {
+  const result = comparePlaySecondsValue(a, b, direction)
+  return result || compareRecentValue(a, b, 'desc') || compareTitle(a, b)
+}
+
+function compareRecent(a: GameListItem, b: GameListItem, direction: SortDirection) {
+  const result = compareRecentValue(a, b, direction)
+  return result || comparePlaySecondsValue(a, b, 'desc') || compareTitle(a, b)
+}
+
+function comparePlaySecondsValue(a: GameListItem, b: GameListItem, direction: SortDirection) {
   const aPlaySeconds = a.playDurationSeconds
   const bPlaySeconds = b.playDurationSeconds
 
-  if (aPlaySeconds === null && bPlaySeconds === null) return compareRecent(a, b)
+  if (aPlaySeconds === null && bPlaySeconds === null) return 0
   if (aPlaySeconds === null) return 1
   if (bPlaySeconds === null) return -1
 
-  const result = direction === 'desc' ? bPlaySeconds - aPlaySeconds : aPlaySeconds - bPlaySeconds
-  return result || compareRecent(a, b)
+  return direction === 'desc' ? bPlaySeconds - aPlaySeconds : aPlaySeconds - bPlaySeconds
 }
 
-function compareRecent(a: GameListItem, b: GameListItem) {
-  return Date.parse(b.lastUpdatedAt ?? '') - Date.parse(a.lastUpdatedAt ?? '')
+function compareRecentValue(a: GameListItem, b: GameListItem, direction: SortDirection) {
+  const aTime = Date.parse(a.lastUpdatedAt ?? '')
+  const bTime = Date.parse(b.lastUpdatedAt ?? '')
+
+  if (!Number.isFinite(aTime) && !Number.isFinite(bTime)) return 0
+  if (!Number.isFinite(aTime)) return 1
+  if (!Number.isFinite(bTime)) return -1
+
+  return direction === 'desc' ? bTime - aTime : aTime - bTime
+}
+
+function compareTitle(a: GameListItem, b: GameListItem) {
+  return a.title.localeCompare(b.title, 'zh-CN')
 }
 
 function TrophyProgressCell({ game }: { game: GameListItem }) {
@@ -263,6 +314,7 @@ function formatDate(value: string | null) {
   if (!value) return '-'
 
   return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

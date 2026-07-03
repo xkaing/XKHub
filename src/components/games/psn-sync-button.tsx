@@ -77,7 +77,9 @@ export function PsnSyncButton() {
       const response = await fetch('/api/psn/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ npsso: npsso.trim() || undefined }),
+        body: JSON.stringify({
+          npsso: npsso.trim() || undefined,
+        }),
       })
       const payload = (await response.json()) as { message?: string; error?: string }
 
@@ -100,8 +102,8 @@ export function PsnSyncButton() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm">
-          <RefreshCw className="mr-2 h-4 w-4" />
+        <Button type="button">
+          <RefreshCw className="mr-2 size-4" />
           同步
         </Button>
       </DialogTrigger>
@@ -195,7 +197,7 @@ export function PsnSyncButton() {
           </Button>
           <Button type="button" onClick={handleSync} disabled={isSyncing || status?.configured === false}>
             <RefreshCw className={cn('mr-2 h-4 w-4', isSyncing ? 'animate-spin' : null)} />
-            {isSyncing ? '同步中' : npsso.trim() ? '保存令牌并同步' : '使用保存令牌同步'}
+            {isSyncing ? '同步中' : formatSyncButtonLabel(npsso)}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -245,10 +247,15 @@ function formatTokenExpiry(token: TokenTimeStatus | null) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function formatSyncButtonLabel(npsso: string) {
+  return npsso.trim() ? '保存令牌并同步' : '使用保存令牌同步'
 }

@@ -124,6 +124,42 @@ create table if not exists public.psn_trophies (
     on delete cascade
 );
 
+create table if not exists public.psn_monthly_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  psn_account_id uuid not null references public.psn_accounts(id) on delete cascade,
+  snapshot_date date not null,
+  captured_at timestamptz not null default now(),
+  online_id text,
+  trophy_summary jsonb not null default '{}'::jsonb,
+  total_play_seconds integer not null default 0,
+  total_earned_trophies jsonb not null default '{}'::jsonb,
+  raw_account jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique (psn_account_id, snapshot_date)
+);
+
+create table if not exists public.psn_monthly_snapshot_games (
+  snapshot_id uuid not null references public.psn_monthly_snapshots(id) on delete cascade,
+  psn_account_id uuid not null references public.psn_accounts(id) on delete cascade,
+  game_id uuid references public.games(id) on delete set null,
+  np_communication_id text not null,
+  title text not null,
+  platform text,
+  category text,
+  cover_url text,
+  play_count integer,
+  play_duration_seconds integer,
+  last_played_at timestamptz,
+  trophy_progress integer,
+  earned_trophies jsonb not null default '{}'::jsonb,
+  defined_trophies jsonb not null default '{}'::jsonb,
+  last_updated_at timestamptz,
+  raw_trophy_title jsonb not null default '{}'::jsonb,
+  raw_game_progress jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  primary key (snapshot_id, np_communication_id)
+);
+
 create table if not exists public.game_purchases (
   id uuid primary key default gen_random_uuid(),
   game_id uuid references public.games(id) on delete set null,
@@ -150,6 +186,10 @@ create table if not exists public.game_purchases (
 create index if not exists game_purchases_status_idx on public.game_purchases (status);
 create index if not exists game_purchases_release_date_idx on public.game_purchases (release_date desc);
 create index if not exists game_purchases_purchase_date_idx on public.game_purchases (purchase_date desc);
+create index if not exists psn_monthly_snapshots_account_date_idx
+on public.psn_monthly_snapshots (psn_account_id, snapshot_date desc);
+create index if not exists psn_monthly_snapshot_games_account_title_idx
+on public.psn_monthly_snapshot_games (psn_account_id, np_communication_id);
 
 drop trigger if exists set_game_purchases_updated_at on public.game_purchases;
 create trigger set_game_purchases_updated_at
@@ -164,6 +204,8 @@ alter table public.psn_game_progress enable row level security;
 alter table public.psn_trophy_titles enable row level security;
 alter table public.psn_title_links enable row level security;
 alter table public.psn_trophies enable row level security;
+alter table public.psn_monthly_snapshots enable row level security;
+alter table public.psn_monthly_snapshot_games enable row level security;
 alter table public.game_purchases enable row level security;
 
 grant select on public.psn_accounts to authenticated;
@@ -172,6 +214,8 @@ grant select on public.psn_game_progress to authenticated;
 grant select on public.psn_trophy_titles to authenticated;
 grant select on public.psn_title_links to authenticated;
 grant select on public.psn_trophies to authenticated;
+grant select on public.psn_monthly_snapshots to authenticated;
+grant select on public.psn_monthly_snapshot_games to authenticated;
 grant select, insert, update, delete on public.game_purchases to anon, authenticated;
 
 create policy "authenticated can read psn accounts"
@@ -201,6 +245,16 @@ using (true);
 
 create policy "authenticated can read psn trophies"
 on public.psn_trophies for select
+to authenticated
+using (true);
+
+create policy "authenticated can read psn monthly snapshots"
+on public.psn_monthly_snapshots for select
+to authenticated
+using (true);
+
+create policy "authenticated can read psn monthly snapshot games"
+on public.psn_monthly_snapshot_games for select
 to authenticated
 using (true);
 
