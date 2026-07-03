@@ -87,9 +87,9 @@ export default async function MonthlyPage({ searchParams }: MonthlyPageProps) {
               <div className="space-y-3">
                 {activity.modelItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 rounded-lg border p-3">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
                       {item.imageUrl ? (
-                        <Image src={item.imageUrl} alt={item.name} width={56} height={56} className="h-14 w-14 object-cover" />
+                        <Image src={item.imageUrl} alt={item.name} fill sizes="56px" className="object-cover" />
                       ) : (
                         <ReceiptText className="size-5 text-muted-foreground" />
                       )}

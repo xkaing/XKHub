@@ -8,7 +8,7 @@ export default function PsGamesPage() {
       <PageHeader
         eyebrow="Games / Library"
         badge="Supabase CRUD"
-        title="PS 游戏清单"
+        title="PS 游戏购买记录"
         description="记录已购买和想买的 PlayStation 游戏，包括封面、发售日期、开发商、发行商和购买信息。"
       />
 

@@ -289,8 +289,8 @@ export function PsGameLibraryManager() {
     } catch (err) {
       const message =
         err instanceof Error && err.message === queryTimeoutError
-          ? '读取 PS 游戏清单超时，请检查 Supabase 连接或表权限'
-          : getErrorMessage(err, '读取 PS 游戏清单失败')
+          ? '读取 PS 游戏购买记录超时，请检查 Supabase 连接或表权限'
+          : getErrorMessage(err, '读取 PS 游戏购买记录失败')
       setError(message)
     } finally {
       if (timeoutId) window.clearTimeout(timeoutId)
@@ -466,7 +466,7 @@ export function PsGameLibraryManager() {
       <Card>
         <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <CardTitle>PS 游戏清单</CardTitle>
+            <CardTitle>PS 游戏购买记录</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">同一张表记录已买和想买，状态可随时切换。</p>
           </div>
           <div className="flex flex-wrap gap-2">
