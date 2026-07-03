@@ -5,6 +5,7 @@ import type React from 'react'
 import Image from 'next/image'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw } from 'lucide-react'
 
+import { AnimatedNumber } from '@/components/animated-number'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -596,36 +598,40 @@ export function ModelItemsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-3">
-        <SummaryCard title="模型数量">
-          <SummaryStat label="总数" value={summary.totalCount} />
-          <SummaryStat label={statusMeta.owned.label} value={summary.ownedCount} toneClassName={statusMeta.owned.toneClassName} />
-          <SummaryStat label={statusMeta.gifted.label} value={summary.giftedCount} toneClassName={statusMeta.gifted.toneClassName} />
-          <SummaryStat label={statusMeta.preorder.label} value={summary.preorderCount} toneClassName={statusMeta.preorder.toneClassName} />
-        </SummaryCard>
-        <SummaryCard title="金额总览">
-          <SummaryStat label="原价" value={formatCurrency(summary.totalOriginal)} />
-          <SummaryStat label="实付" value={formatCurrency(summary.totalPaid)} />
-          <SummaryStat label="优惠" value={formatCurrency(summary.totalDiscount)} />
-        </SummaryCard>
-        <SummaryCard title="模型系列">
-          <div className="col-span-2 flex flex-col gap-3">
-            {summary.seriesCounts.length > 0 ? (
-              summary.seriesCounts.map((series) => (
-                <div
-                  key={series.name}
-                  className="flex items-center justify-between gap-4 text-base font-medium text-foreground"
-                >
-                  <span className="truncate">{series.name}</span>
-                  <span className="shrink-0 font-semibold tabular-nums">{series.count}</span>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">暂无系列数据</div>
-            )}
-          </div>
-        </SummaryCard>
-      </div>
+      {loading ? (
+        <ModelSummarySkeleton />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-3">
+          <SummaryCard title="模型数量">
+            <SummaryStat label="总数" value={summary.totalCount} />
+            <SummaryStat label={statusMeta.owned.label} value={summary.ownedCount} toneClassName={statusMeta.owned.toneClassName} />
+            <SummaryStat label={statusMeta.gifted.label} value={summary.giftedCount} toneClassName={statusMeta.gifted.toneClassName} />
+            <SummaryStat label={statusMeta.preorder.label} value={summary.preorderCount} toneClassName={statusMeta.preorder.toneClassName} />
+          </SummaryCard>
+          <SummaryCard title="金额总览">
+            <SummaryStat label="原价" value={summary.totalOriginal} formatValue={formatCurrency} />
+            <SummaryStat label="实付" value={summary.totalPaid} formatValue={formatCurrency} />
+            <SummaryStat label="优惠" value={summary.totalDiscount} formatValue={formatCurrency} />
+          </SummaryCard>
+          <SummaryCard title="模型系列">
+            <div className="col-span-2 flex flex-col gap-3">
+              {summary.seriesCounts.length > 0 ? (
+                summary.seriesCounts.map((series) => (
+                  <div
+                    key={series.name}
+                    className="flex items-center justify-between gap-4 text-base font-medium text-foreground"
+                  >
+                    <span className="truncate">{series.name}</span>
+                    <span className="shrink-0 font-semibold tabular-nums">{series.count}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">暂无系列数据</div>
+              )}
+            </div>
+          </SummaryCard>
+        </div>
+      )}
 
       {error ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -651,10 +657,7 @@ export function ModelItemsManager() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              正在读取 Supabase 数据
-            </div>
+            <ModelTableSkeleton />
           ) : items.length === 0 ? (
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed text-center">
               <div className="text-base font-medium">还没有模型记录</div>
@@ -994,15 +997,112 @@ function SummaryStat({
   label,
   value,
   toneClassName,
+  formatValue,
 }: {
   label: string
-  value: string | number
+  value: number
   toneClassName?: string
+  formatValue?: (value: number) => string
 }) {
   return (
     <div>
-      <div className={cn('text-2xl font-semibold tabular-nums', toneClassName)}>{value}</div>
+      <AnimatedNumber className={cn('text-2xl font-semibold tabular-nums', toneClassName)} value={value} formatValue={formatValue} />
       <div className={cn('mt-1 text-sm text-muted-foreground', toneClassName)}>{label}</div>
+    </div>
+  )
+}
+
+function ModelSummarySkeleton() {
+  return (
+    <div className="grid gap-4 xl:grid-cols-3" aria-label="模型统计加载中">
+      {Array.from({ length: 3 }).map((_, cardIndex) => (
+        <Card key={cardIndex}>
+          <CardHeader className="pb-3">
+            <Skeleton className="h-4 w-20" />
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              {Array.from({ length: cardIndex === 2 ? 4 : 3 }).map((__, statIndex) => (
+                <div key={statIndex} className={cardIndex === 2 ? 'col-span-2 flex items-center justify-between gap-4' : undefined}>
+                  <Skeleton className={cn('h-7', cardIndex === 2 ? 'w-36' : 'w-20')} />
+                  {cardIndex === 2 ? <Skeleton className="h-7 w-8" /> : <Skeleton className="mt-2 h-4 w-14" />}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+function ModelTableSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="模型列表加载中">
+      <div className="grid gap-3 md:grid-cols-3">
+        <FilterSkeleton />
+        <FilterSkeleton />
+        <FilterSkeleton />
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-20">图片</TableHead>
+            <TableHead className="w-36">名称</TableHead>
+            <TableHead>分类</TableHead>
+            <TableHead>购买</TableHead>
+            <TableHead className="w-22 text-right">价格</TableHead>
+            <TableHead className="w-22 text-right">优惠</TableHead>
+            <TableHead className="w-22 text-right">状态</TableHead>
+            <TableHead className="w-20 text-right">操作</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Skeleton className="h-14 w-14 rounded-md" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28" />
+              </TableCell>
+              <TableCell>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="ml-auto h-4 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="ml-auto h-4 w-14" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="ml-auto h-6 w-14" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="ml-auto h-8 w-8" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function FilterSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-4 w-12" />
+      <Skeleton className="h-10 w-full" />
     </div>
   )
 }

@@ -28,7 +28,7 @@ const navItems = [
   { href: '/monthly', label: '本月动态', icon: CalendarDays },
   { href: '/models', label: '模型收藏', icon: PackageSearch },
   { href: '/games', label: '游戏与奖杯', icon: Gamepad2 },
-  { href: '/ps-games', label: 'PS 游戏购买记录', icon: Gamepad2 },
+  { href: '/buy-games', label: 'PS 游戏购买记录', icon: Gamepad2 },
   { href: '/insights', label: '统计分析', icon: ChartNoAxesCombined },
   { href: '/ai', label: 'AI 工作台', icon: Bot },
 ]

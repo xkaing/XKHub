@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react'
 
+import { AnimatedNumber } from '@/components/animated-number'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -217,10 +218,10 @@ export function PsGameLibraryManager() {
     })
 
     return [
-      { label: '总记录', value: items.length.toString(), detail: '已买和想买合计', icon: Gamepad2 },
-      { label: '已购买', value: owned.length.toString(), detail: formatCurrency(totalPaid, 'CNY'), icon: ShoppingBag },
-      { label: '想买', value: wishlist.length.toString(), detail: '候选购买池', icon: Heart },
-      { label: '未发售', value: upcoming.length.toString(), detail: '按发售日期判断', icon: CalendarDays },
+      { label: '总记录', value: items.length, detail: '已买和想买合计', icon: Gamepad2 },
+      { label: '已购买', value: owned.length, detail: formatCurrency(totalPaid, 'CNY'), icon: ShoppingBag },
+      { label: '想买', value: wishlist.length, detail: '候选购买池', icon: Heart },
+      { label: '未发售', value: upcoming.length, detail: '按发售日期判断', icon: CalendarDays },
     ]
   }, [items])
 
@@ -449,7 +450,7 @@ export function PsGameLibraryManager() {
                 <Icon className="size-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-semibold">{metric.value}</div>
+                <AnimatedNumber className="text-2xl font-semibold tabular-nums" value={metric.value} />
                 <p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p>
               </CardContent>
             </Card>

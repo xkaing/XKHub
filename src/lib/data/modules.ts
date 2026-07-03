@@ -25,7 +25,7 @@ export const dataModules: DataModule[] = [
   {
     title: 'PS 游戏购买记录',
     description: '记录已买和想买的 PS 游戏、封面、发售日、开发商与发行商。',
-    href: '/ps-games',
+    href: '/buy-games',
     status: 'ready',
     records: 'Supabase CRUD',
   },

@@ -1,5 +1,6 @@
 import type { Metric } from '@/types'
 
+import { AnimatedNumberText } from '@/components/animated-number'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function MetricCard({ metric }: { metric: Metric }) {
@@ -9,7 +10,7 @@ export function MetricCard({ metric }: { metric: Metric }) {
         <CardTitle className="text-sm font-medium text-muted-foreground">{metric.label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-semibold">{metric.value}</div>
+        <AnimatedNumberText className="text-2xl font-semibold" value={metric.value} />
         <p className="mt-1 text-sm text-muted-foreground">{metric.detail}</p>
       </CardContent>
     </Card>

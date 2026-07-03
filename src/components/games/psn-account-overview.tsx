@@ -1,6 +1,9 @@
+'use client'
+
 import Image from 'next/image'
 import { Trophy } from 'lucide-react'
 
+import { AnimatedNumber } from '@/components/animated-number'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { GameListSummary, TrophySummary } from '@/lib/data/games.server'
@@ -28,9 +31,9 @@ export function PsnAccountOverview({ summary }: { summary: GameListSummary }) {
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-sm">
-          <Stat label="总时长" value={formatPlaySeconds(summary.totalPlaySeconds)} />
-          <Stat label="总游戏" value={String(summary.totalGames)} />
-          <Stat label="100%" value={String(summary.completedGames)} highlight />
+          <Stat label="总时长" value={summary.totalPlaySeconds} formatValue={formatPlaySeconds} />
+          <Stat label="总游戏" value={summary.totalGames} />
+          <Stat label="100%" value={summary.completedGames} highlight />
         </div>
 
         <div className="grid grid-cols-4 gap-3 text-sm">
@@ -44,7 +47,17 @@ export function PsnAccountOverview({ summary }: { summary: GameListSummary }) {
   )
 }
 
-function Stat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function Stat({
+  label,
+  value,
+  highlight = false,
+  formatValue,
+}: {
+  label: string
+  value: number
+  highlight?: boolean
+  formatValue?: (value: number) => string
+}) {
   return (
     <div
       className={`flex min-h-24 min-w-0 flex-col justify-center rounded-md border px-3 py-4 ${
@@ -52,7 +65,11 @@ function Stat({ label, value, highlight = false }: { label: string; value: strin
       }`}
     >
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-2 whitespace-nowrap text-2xl font-semibold leading-none tracking-normal">{value}</div>
+      <AnimatedNumber
+        className="mt-2 whitespace-nowrap text-2xl font-semibold leading-none tracking-normal"
+        value={value}
+        formatValue={formatValue}
+      />
     </div>
   )
 }
@@ -87,9 +104,7 @@ function TrophyStat({ label, value, tone }: { label: string; value?: number; ton
       <span className={`flex h-8 w-8 items-center justify-center rounded-md ${classes}`}>
         <Trophy className="h-5 w-5" aria-hidden="true" />
       </span>
-      <div className={`text-2xl font-semibold leading-none ${toneValueClass[tone]}`}>
-        {value ?? 0}
-      </div>
+      <AnimatedNumber className={`text-2xl font-semibold leading-none ${toneValueClass[tone]}`} value={value ?? 0} />
     </div>
   )
 }

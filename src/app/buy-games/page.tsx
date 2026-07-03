@@ -2,7 +2,7 @@ import { AppShell } from '@/components/app-shell'
 import { PsGameLibraryManager } from '@/components/games/ps-game-library-manager'
 import { PageHeader } from '@/components/page-header'
 
-export default function PsGamesPage() {
+export default function BuyGamesPage() {
   return (
     <AppShell>
       <PageHeader
