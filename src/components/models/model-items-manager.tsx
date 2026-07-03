@@ -5,7 +5,6 @@ import type React from 'react'
 import Image from 'next/image'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Edit, ImagePlus, Loader2, Plus, RefreshCw } from 'lucide-react'
 
-import { MetricCard } from '@/components/metric-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,7 +40,7 @@ import {
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { createClient } from '@/lib/supabase/client'
-import { getModelMetrics, normalizeModelSeries, parseTags } from '@/lib/data/models'
+import { normalizeModelSeries, parseTags } from '@/lib/data/models'
 import { cn } from '@/lib/utils'
 import type { CurrencyCode, ModelItem, ModelItemStatus } from '@/types'
 
@@ -129,16 +128,35 @@ const emptyForm: ModelFormState = {
   note: '',
 }
 
-const statusText: Record<ModelItemStatus, string> = {
-  preorder: '预定',
-  owned: '入库',
-  gifted: '赠送',
+const statusMeta: Record<
+  ModelItemStatus,
+  {
+    label: string
+    badgeVariant: 'default' | 'secondary' | 'destructive'
+    toneClassName: string
+  }
+> = {
+  owned: {
+    label: '入库',
+    badgeVariant: 'default',
+    toneClassName: 'text-primary',
+  },
+  gifted: {
+    label: '赠送',
+    badgeVariant: 'secondary',
+    toneClassName: 'text-muted-foreground',
+  },
+  preorder: {
+    label: '预定',
+    badgeVariant: 'destructive',
+    toneClassName: 'text-destructive',
+  },
 }
 
 const statusOptions: Array<{ value: ModelItemStatus; label: string }> = [
-  { value: 'preorder', label: '预定' },
-  { value: 'owned', label: '入库' },
-  { value: 'gifted', label: '赠送' },
+  { value: 'preorder', label: statusMeta.preorder.label },
+  { value: 'owned', label: statusMeta.owned.label },
+  { value: 'gifted', label: statusMeta.gifted.label },
 ]
 
 const brandOptions = ['JOYTOY', 'LEGO', 'BANDAI']
@@ -149,9 +167,9 @@ const purchasePlatformOptions = ['淘宝', '京东', '咸鱼', '线下店', '线
 const sellerOptions = ['暗源旗舰店', '暗源线下店', '会展展台']
 const characterRoleOptions = ['连长', '战团长', '基因原体']
 
-const legionGroups = [
+const factionGroups = [
   {
-    label: '忠诚派',
+    label: '帝国',
     options: [
       '第一军团 暗黑天使',
       '第五军团 白色伤疤',
@@ -162,10 +180,13 @@ const legionGroups = [
       '第十三军团 极限战士',
       '第十八军团 火蜥蜴',
       '第十九军团 暗鸦守卫',
+      '禁军',
+      '修女',
+      '黑色圣堂',
     ],
   },
   {
-    label: '叛乱派',
+    label: '混沌',
     options: [
       '第三军团 帝皇之子',
       '第四军团 钢铁勇士',
@@ -176,15 +197,9 @@ const legionGroups = [
       '第十六军团 荷鲁斯之子',
       '第十七军团 怀言者',
       '第二十军团 阿尔法军团',
+      '黑色军团',
+      '堕落天使',
     ],
-  },
-  {
-    label: '其他',
-    options: ['禁军', '修女'],
-  },
-  {
-    label: '二次建军',
-    options: ['黑色军团', '黑色圣堂', '堕落天使'],
   },
 ]
 
@@ -327,14 +342,14 @@ export function ModelItemsManager() {
   })
   const [form, setForm] = useState<ModelFormState>(emptyForm)
 
-  const metrics = useMemo(() => getModelMetrics(items), [items])
+  const summary = useMemo(() => getModelSummary(items), [items])
   const seriesFilterOptions = useMemo(
     () => uniqueOptions([...seriesOptions, ...items.map((item) => item.series)]),
     [items]
   )
   const factionFilterOptions = useMemo(
-    () => uniqueOptions([...legionGroups.flatMap((group) => group.options), ...items.map((item) => item.faction)]),
-    [items]
+    () => uniqueOptions(factionGroups.flatMap((group) => group.options)),
+    []
   )
   const characterFilterOptions = useMemo(
     () => uniqueOptions([...characterRoleOptions, ...items.map((item) => item.characterName)]),
@@ -581,10 +596,35 @@ export function ModelItemsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {metrics.map((metric) => (
-          <MetricCard key={metric.label} metric={metric} />
-        ))}
+      <div className="grid gap-4 xl:grid-cols-3">
+        <SummaryCard title="模型数量">
+          <SummaryStat label="总数" value={summary.totalCount} />
+          <SummaryStat label={statusMeta.owned.label} value={summary.ownedCount} toneClassName={statusMeta.owned.toneClassName} />
+          <SummaryStat label={statusMeta.gifted.label} value={summary.giftedCount} toneClassName={statusMeta.gifted.toneClassName} />
+          <SummaryStat label={statusMeta.preorder.label} value={summary.preorderCount} toneClassName={statusMeta.preorder.toneClassName} />
+        </SummaryCard>
+        <SummaryCard title="金额总览">
+          <SummaryStat label="原价" value={formatCurrency(summary.totalOriginal)} />
+          <SummaryStat label="实付" value={formatCurrency(summary.totalPaid)} />
+          <SummaryStat label="优惠" value={formatCurrency(summary.totalDiscount)} />
+        </SummaryCard>
+        <SummaryCard title="模型系列">
+          <div className="col-span-2 flex flex-col gap-3">
+            {summary.seriesCounts.length > 0 ? (
+              summary.seriesCounts.map((series) => (
+                <div
+                  key={series.name}
+                  className="flex items-center justify-between gap-4 text-base font-medium text-foreground"
+                >
+                  <span className="truncate">{series.name}</span>
+                  <span className="shrink-0 font-semibold tabular-nums">{series.count}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">暂无系列数据</div>
+            )}
+          </div>
+        </SummaryCard>
       </div>
 
       {error ? (
@@ -594,19 +634,19 @@ export function ModelItemsManager() {
       ) : null}
 
       <Card>
-        <CardHeader className="gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
+        <CardHeader className="gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <CardTitle>模型列表</CardTitle>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={fetchItems} disabled={loading}>
-              <RefreshCw className="mr-2 size-4" />
-              刷新
-            </Button>
-            <Button onClick={() => runProtectedAction({ type: 'create' })}>
-              <Plus className="mr-2 size-4" />
-              新增模型
-            </Button>
+            <div className="flex flex-wrap items-start gap-2 md:justify-end">
+              <Button variant="outline" onClick={fetchItems} disabled={loading}>
+                <RefreshCw className="mr-2 size-4" />
+                刷新
+              </Button>
+              <Button onClick={() => runProtectedAction({ type: 'create' })}>
+                <Plus className="mr-2 size-4" />
+                新增模型
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -636,12 +676,13 @@ export function ModelItemsManager() {
                   allLabel="全部系列"
                 />
                 <MultiFilterSelect
-                  label="军团"
+                  label="阵营"
                   value={filters.faction}
                   onClear={() => updateFilter('faction', [])}
                   onToggle={(value) => toggleFilter('faction', value)}
                   options={factionFilterOptions}
-                  allLabel="全部军团"
+                  groups={factionGroups}
+                  allLabel="全部阵营"
                 />
                 <MultiFilterSelect
                   label="角色"
@@ -705,7 +746,7 @@ export function ModelItemsManager() {
                             {item.imageUrl ? (
                               <button
                                 type="button"
-                                className="block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="relative block size-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 onClick={() => setPreviewItem(item)}
                                 title="预览图片"
                               >
@@ -746,11 +787,8 @@ export function ModelItemsManager() {
                             : `¥${(item.originalPrice - item.purchasePrice).toLocaleString('zh-CN')}`}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right">
-                          <Badge
-                            className="whitespace-nowrap"
-                            variant={item.status === 'preorder' ? 'destructive' : 'secondary'}
-                          >
-                            {statusText[item.status]}
+                          <Badge className={cn('whitespace-nowrap', statusMeta[item.status].toneClassName)} variant={statusMeta[item.status].badgeVariant}>
+                            {statusMeta[item.status].label}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -797,8 +835,8 @@ export function ModelItemsManager() {
               <GroupedSelect
                 value={form.faction}
                 onChange={(value) => updateForm('faction', value)}
-                groups={legionGroups}
-                placeholder="选择军团"
+                groups={factionGroups}
+                placeholder="选择阵营"
               />
             </Field>
             <Field label="角色/单位">
@@ -937,6 +975,68 @@ export function ModelItemsManager() {
   )
 }
 
+function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4">
+          {children}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SummaryStat({
+  label,
+  value,
+  toneClassName,
+}: {
+  label: string
+  value: string | number
+  toneClassName?: string
+}) {
+  return (
+    <div>
+      <div className={cn('text-2xl font-semibold tabular-nums', toneClassName)}>{value}</div>
+      <div className={cn('mt-1 text-sm text-muted-foreground', toneClassName)}>{label}</div>
+    </div>
+  )
+}
+
+function getModelSummary(items: ModelItem[]) {
+  const totalOriginal = items.reduce((sum, item) => sum + (item.originalPrice ?? 0), 0)
+  const totalPaid = items.reduce((sum, item) => sum + (item.purchasePrice ?? 0), 0)
+  const totalDiscount = totalOriginal - totalPaid
+  const seriesCounts = Array.from(
+    items.reduce((counts, item) => {
+      const series = normalizeModelSeries(item.series) ?? '未分类'
+      counts.set(series, (counts.get(series) ?? 0) + 1)
+      return counts
+    }, new Map<string, number>())
+  )
+    .map(([name, count]) => ({ name, count }))
+    .sort((first, second) => second.count - first.count || first.name.localeCompare(second.name, 'zh-CN'))
+
+  return {
+    totalCount: items.length,
+    ownedCount: items.filter((item) => item.status === 'owned').length,
+    giftedCount: items.filter((item) => item.status === 'gifted').length,
+    preorderCount: items.filter((item) => item.status === 'preorder').length,
+    totalOriginal,
+    totalPaid,
+    totalDiscount,
+    seriesCounts,
+  }
+}
+
+function formatCurrency(value: number) {
+  return `¥${Math.max(0, value).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`
+}
+
 function SortHeaderButton({
   active,
   direction,
@@ -971,6 +1071,7 @@ function MultiFilterSelect({
   onClear,
   onToggle,
   options,
+  groups,
   allLabel,
 }: {
   label: string
@@ -978,9 +1079,11 @@ function MultiFilterSelect({
   onClear: () => void
   onToggle: (value: string) => void
   options: string[]
+  groups?: Array<{ label: string; options: string[] }>
   allLabel: string
 }) {
   const displayText = value.length === 0 ? allLabel : value.length === 1 ? value[0] : `已选 ${value.length} 项`
+  const optionGroups = groups ?? [{ label: '', options }]
 
   return (
     <div className="space-y-2 text-sm font-medium">
@@ -995,15 +1098,21 @@ function MultiFilterSelect({
         <DropdownMenuContent className="w-64" align="start">
           <DropdownMenuItem onClick={onClear}>{allLabel}</DropdownMenuItem>
           <DropdownMenuSeparator />
-          {options.map((option) => (
-            <DropdownMenuCheckboxItem
-              key={option}
-              checked={value.includes(option)}
-              onCheckedChange={() => onToggle(option)}
-              onSelect={(event) => event.preventDefault()}
-            >
-              {option}
-            </DropdownMenuCheckboxItem>
+          {optionGroups.map((group, groupIndex) => (
+            <div key={group.label || groupIndex}>
+              {group.label ? <DropdownMenuLabel>{group.label}</DropdownMenuLabel> : null}
+              {group.options.map((option) => (
+                <DropdownMenuCheckboxItem
+                  key={option}
+                  checked={value.includes(option)}
+                  onCheckedChange={() => onToggle(option)}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  {option}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {groupIndex < optionGroups.length - 1 ? <DropdownMenuSeparator /> : null}
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
