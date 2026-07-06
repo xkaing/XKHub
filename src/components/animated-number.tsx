@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import CountUp from 'react-countup'
 
 import { cn } from '@/lib/utils'
@@ -11,7 +12,7 @@ type AnimatedNumberProps = {
   formatValue?: (value: number) => string
 }
 
-export function AnimatedNumber({
+function AnimatedNumberBase({
   value,
   className,
   duration = 1.4,
@@ -36,7 +37,9 @@ export function AnimatedNumber({
   )
 }
 
-export function AnimatedNumberText({
+export const AnimatedNumber = memo(AnimatedNumberBase)
+
+function AnimatedNumberTextBase({
   value,
   className,
   duration,
@@ -61,6 +64,8 @@ export function AnimatedNumberText({
     />
   )
 }
+
+export const AnimatedNumberText = memo(AnimatedNumberTextBase)
 
 function parseNumberText(value: string) {
   const match = value.match(/-?\d[\d,]*(?:\.\d+)?/)

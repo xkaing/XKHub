@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Oxanium } from 'next/font/google'
 
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import './globals.css'
 
@@ -33,7 +34,7 @@ export default function RootLayout({
       <body>
         {/* 在 React 水合前写入主题类，避免深色模式首屏闪烁。 */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   )

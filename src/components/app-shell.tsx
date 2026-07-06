@@ -4,8 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
-  Bot,
   CalendarDays,
+  Cat,
   ChartNoAxesCombined,
   Check,
   Gamepad2,
@@ -30,7 +30,7 @@ const navItems = [
   { href: '/games', label: '游戏与奖杯', icon: Gamepad2 },
   { href: '/buy-games', label: 'PS 游戏购买记录', icon: Gamepad2 },
   { href: '/insights', label: '统计分析', icon: ChartNoAxesCombined },
-  { href: '/ai', label: 'AI 工作台', icon: Bot },
+  { href: '/ai', label: '酸菜', icon: Cat },
 ]
 
 type ThemeMode = 'light' | 'dark' | 'system'
