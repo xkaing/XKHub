@@ -24,6 +24,7 @@ function AnimatedNumberBase({
     <CountUp
       end={value}
       duration={duration}
+      delay={0}
       preserveValue
       decimals={getDecimalPlaces(value)}
       formattingFn={(currentValue) => (formatValue ? formatValue(currentValue) : formatNumber(currentValue, getDecimalPlaces(value)))}
